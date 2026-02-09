@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rl-drone-hoops"
+version = "0.0.1"
+description = "Pure-RL racing drone through hoops with camera+IMU (MuJoCo)."
+requires-python = ">=3.9"
+dependencies = [
+  "numpy>=1.23",
+  "gymnasium>=0.29",
+  "mujoco==2.3.7",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["rl_drone_hoops*"]

@@ -1,0 +1,6 @@
+# Training/evaluation extras (kept separate to avoid forcing a specific torch+CUDA install).
+torch
+tensorboard
+imageio
+imageio-ffmpeg
+

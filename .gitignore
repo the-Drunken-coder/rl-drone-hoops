@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Editors/OS
+.DS_Store
+.idea/
+.vscode/
+
+# Envs
+.venv/
+venv/
+env/
+
+# Training artifacts (large / machine-local)
+runs/
+videos/
+*.pt
+*.mp4
+*.tfevents.*
+

@@ -1,0 +1,31 @@
+<mujoco model="drone_hoops">
+  <compiler angle="radian" coordinate="local" inertiafromgeom="true"/>
+  <option timestep="0.001" gravity="0 0 -9.81" integrator="RK4"/>
+
+  <visual>
+    <quality shadowsize="2048"/>
+    <map znear="0.01"/>
+  </visual>
+
+  <asset>
+    <texture name="grid" type="2d" builtin="checker" rgb1="0.2 0.2 0.2" rgb2="0.3 0.3 0.3" width="256" height="256"/>
+    <material name="gridmat" texture="grid" texrepeat="10 10" reflectance="0.0"/>
+  </asset>
+
+  <worldbody>
+    <geom name="ground" type="plane" size="50 50 0.1" material="gridmat" rgba="0.9 0.9 0.9 1" contype="1" conaffinity="1"/>
+
+    <!-- Drone: a single rigid body with a free joint.
+         We apply forces/torques in Python (mj_applyFT), not via XML actuators. -->
+    <body name="drone" pos="0 0 1">
+      <freejoint/>
+      <geom name="drone_geom" type="box" size="0.08 0.08 0.02" rgba="0.1 0.1 0.1 1" contype="1" conaffinity="1"/>
+
+      <!-- FPV camera rigidly attached to drone body. -->
+      <camera name="fpv" pos="0.10 0 0.02" quat="0.9238795 0 0.3826834 0" fovy="140"/>
+    </body>
+
+    <!-- Gates are created/updated in Python as sites (visual-only) and not collidable by default. -->
+  </worldbody>
+</mujoco>
+

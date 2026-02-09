@@ -1,0 +1,12 @@
+numpy>=1.23
+gymnasium>=0.29
+
+# MuJoCo wheels are version/Python dependent. Python 3.9 compatibility is best with 2.3.x.
+mujoco==2.3.7
+
+# Optional (training/logging; install when ready)
+# torch>=2.0
+# stable-baselines3>=2.2
+# sb3-contrib>=2.2
+# imageio>=2.34
+# imageio-ffmpeg>=0.4
