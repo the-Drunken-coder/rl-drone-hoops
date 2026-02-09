@@ -9,7 +9,7 @@ ppo:
   device: "auto"  # "auto", "cpu", or "cuda"
 
   # Training loop
-  num_envs: 4
+  num_envs: 0               # 0 = auto (use CPU cores; capped)
   total_steps: 200_000
   rollout_steps: 128
 

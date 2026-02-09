@@ -3,13 +3,17 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
+from collections import deque
 
 # Headless default: if there's no DISPLAY and MUJOCO_GL isn't set, prefer EGL.
 # (Can be overridden by explicitly setting MUJOCO_GL=osmesa/glfw/egl.)
-if "MUJOCO_GL" not in os.environ and "DISPLAY" not in os.environ:
+#
+# Note: "egl" is not a valid backend on Windows; avoid setting it there.
+if sys.platform != "win32" and "MUJOCO_GL" not in os.environ and "DISPLAY" not in os.environ:
     os.environ["MUJOCO_GL"] = "egl"
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Tuple, TypedDict
+from typing import Any, Deque, Dict, Optional, Tuple, TypedDict
 
 import numpy as np
 
@@ -131,6 +135,7 @@ class MujocoDroneHoopsEnv(gym.Env):
         gate_y_range: float = 3.0,
         gate_z_range: Tuple[float, float] = (1.0, 2.0),
         seed: Optional[int] = None,
+        reward_weights: Optional[Dict[str, float]] = None,
     ) -> None:
         super().__init__()
 
@@ -197,6 +202,24 @@ class MujocoDroneHoopsEnv(gym.Env):
         # Keep this bounded to avoid huge negative returns when the drone is already unstable.
         self.k_angrate = 0.0002  # penalize body angular rate magnitude
         self.r_crash = -20.0
+
+        if reward_weights:
+            allowed = {
+                "r_alive",
+                "r_gate",
+                "k_progress",
+                "k_center",
+                "k_speed",
+                "k_smooth",
+                "k_tilt",
+                "k_angrate",
+                "r_crash",
+            }
+            unknown = [k for k in reward_weights.keys() if k not in allowed]
+            if unknown:
+                raise ValueError(f"Unknown reward weight keys: {unknown}")
+            for k, v in reward_weights.items():
+                setattr(self, k, float(v))
 
         # Validate reward weights
         self._validate_reward_weights()
@@ -287,7 +310,8 @@ class MujocoDroneHoopsEnv(gym.Env):
         self._imu_count = 0  # Total samples written (for wraparound handling)
 
         # Action latency.
-        self._act_queue: list[tuple[float, np.ndarray]] = []  # (apply_ts, action_scaled)
+        # Deque avoids O(n) list slicing during _update_applied_action().
+        self._act_queue: Deque[tuple[float, np.ndarray]] = deque()  # (apply_ts, action_scaled)
         self._applied_action = np.zeros(4, dtype=np.float64)
         self._thrust_state = 0.0  # lagged thrust (N)
 
@@ -314,6 +338,7 @@ class MujocoDroneHoopsEnv(gym.Env):
         self._f_work = np.zeros(3, dtype=np.float64)
         self._tau_work = np.zeros(3, dtype=np.float64)
         self._d_work = np.zeros(3, dtype=np.float64)
+        self._w_work = np.zeros(3, dtype=np.float64)
 
         # Pre-compute physics constants (3.2: Pre-compute Physics Constants)
         self._thrust_alpha = self.dt_phys / max(self.thrust_tau, 1e-6)
@@ -527,7 +552,8 @@ class MujocoDroneHoopsEnv(gym.Env):
 
         v_world = qvel[0:3]
         w_world = qvel[3:6]
-        w_body = R.T @ w_world
+        np.matmul(R.T, w_world, out=self._w_work)
+        w_body = self._w_work
 
         # Linear acceleration (finite-diff).
         a_world = (v_world - self._v_prev) / max(self.dt_phys, 1e-9)
@@ -535,7 +561,10 @@ class MujocoDroneHoopsEnv(gym.Env):
 
         a_body = R.T @ (a_world - self._gravity)  # (Optimization 3.2: Use pre-computed gravity)
 
-        return np.concatenate([w_body, a_body], axis=0).astype(np.float32)
+        imu = np.empty((6,), dtype=np.float32)
+        imu[0:3] = w_body
+        imu[3:6] = a_body
+        return imu
 
     def _obs(self) -> ObservationDict:
         """Construct observation dict from current sensor state."""
@@ -550,10 +579,10 @@ class MujocoDroneHoopsEnv(gym.Env):
                 # Haven't wrapped around yet, just take from the end
                 imu[-take:, :] = self._imu_buffer[self._imu_count - take:self._imu_count]
             else:
-                # Wrapped around: take from _imu_write_idx backwards
-                for i in range(take):
-                    src_idx = (self._imu_write_idx - 1 - i) % buffer_size
-                    imu[self.imu_window_n - 1 - i] = self._imu_buffer[src_idx]
+                # Wrapped around: last `take` samples end at (_imu_write_idx - 1).
+                start = self._imu_write_idx - take
+                idxs = (start + np.arange(take, dtype=np.int64)) % buffer_size
+                imu[-take:, :] = self._imu_buffer[idxs]
 
         return {
             "image": self._last_image.copy(),
@@ -572,14 +601,10 @@ class MujocoDroneHoopsEnv(gym.Env):
 
     def _update_applied_action(self) -> None:
         # Apply the newest queued action whose apply_ts has passed.
-        if not self._act_queue:
-            return
-        i = 0
-        while i < len(self._act_queue) and self._act_queue[i][0] <= self._t + 1e-12:
-            self._applied_action = self._act_queue[i][1]
-            i += 1
-        if i:
-            self._act_queue = self._act_queue[i:]
+        eps = self._t + 1e-12
+        while self._act_queue and self._act_queue[0][0] <= eps:
+            _ts, a = self._act_queue.popleft()
+            self._applied_action = a
 
     def _apply_forces_and_step(self) -> None:
         # Update action if delayed.
@@ -597,7 +622,9 @@ class MujocoDroneHoopsEnv(gym.Env):
         R = self._get_rotation_matrix(q)  # (Optimization 1.1: Cache rotation matrix)
         v_world = qvel[0:3]
         w_world = qvel[3:6]
-        w_body = R.T @ w_world
+        # w_body = R.T @ w_world
+        np.matmul(R.T, w_world, out=self._w_work)
+        w_body = self._w_work
 
         # Desired rates in body, thrust in N.
         w_cmd = self._applied_action[0:3]
@@ -608,20 +635,19 @@ class MujocoDroneHoopsEnv(gym.Env):
 
         # Rate P control -> body torque, then map to world.
         w_err = w_cmd - w_body
-        tau_body = np.clip(self.rate_kp * w_err, -self.torque_max, self.torque_max)
-        tau_world = R @ tau_body
-
-        # Thrust in world along body +Z.
-        f_world = R @ np.array([0.0, 0.0, self._thrust_state], dtype=np.float64)
+        tau_body = np.clip(self.rate_kp * w_err, -self.torque_max, self.torque_max)  # (3,)
+        # tau_world = R @ tau_body
+        np.matmul(R, tau_body, out=self._tau_work)
 
         # Simple drag in world.
         v = v_world
-        speed = float(np.linalg.norm(v))
-        f_drag = -self.lin_drag * v - self.quad_drag * speed * v
-        tau_drag_world = -self.ang_drag * w_world
-
-        f_total = f_world + f_drag
-        tau_total = tau_world + tau_drag_world
+        speed = float(np.sqrt(float(np.dot(v, v))))
+        # f_total = thrust_world + drag
+        # thrust_world is thrust along body +Z: R[:,2] * thrust
+        self._f_work[:] = R[:, 2] * self._thrust_state
+        self._f_work[:] += (-self.lin_drag - self.quad_drag * speed) * v
+        # tau_total = tau_world + angular drag
+        self._tau_work[:] += -self.ang_drag * w_world
 
         # Apply at COM.
         # mujoco.mj_applyFT expects (3,1) float64 arrays and writes into qfrc_target.
@@ -630,9 +656,9 @@ class MujocoDroneHoopsEnv(gym.Env):
         mujoco.mj_applyFT(
             self.model,
             self.data,
-            np.asarray(f_total, dtype=np.float64).reshape(3, 1),
-            np.asarray(tau_total, dtype=np.float64).reshape(3, 1),
-            np.asarray(point, dtype=np.float64).reshape(3, 1),
+            self._f_work.reshape(3, 1),
+            self._tau_work.reshape(3, 1),
+            point.reshape(3, 1),
             int(self._drone_bid),
             self.data.qfrc_applied,
         )
@@ -837,7 +863,7 @@ class MujocoDroneHoopsEnv(gym.Env):
         self._imu_count = 0
         self._imu_buffer.fill(0)
 
-        self._act_queue = []
+        self._act_queue.clear()
         self._applied_action = np.array([0.0, 0.0, 0.0, self._hover_thrust], dtype=np.float64)
         self._thrust_state = float(self._hover_thrust)
         self._last_action_norm = np.array([0.0, 0.0, 0.0, self._hover_thrust_norm], dtype=np.float32)
@@ -932,7 +958,7 @@ class MujocoDroneHoopsEnv(gym.Env):
             if len(self._extra_renderers) >= MAX_CACHED_RENDERERS:
                 oldest_key = next(iter(self._extra_renderers))
                 evicted_renderer = self._extra_renderers.pop(oldest_key)
-                evicted_renderer.close()
+                self._close_renderer(evicted_renderer)
             r = mujoco.Renderer(self.model, height=h, width=w)
             self._extra_renderers[key] = r
         # Always update the extra renderer's scene from current simulation data
@@ -941,6 +967,25 @@ class MujocoDroneHoopsEnv(gym.Env):
         if self.image_rot90:
             rgb = np.rot90(rgb, k=self.image_rot90)
         return rgb
+
+    @staticmethod
+    def _close_renderer(r: Any) -> None:
+        # MuJoCo's python Renderer API has changed across versions.
+        # Some releases expose .close(), others rely on GC/free().
+        for name in ("close", "free", "release"):
+            fn = getattr(r, name, None)
+            if callable(fn):
+                try:
+                    fn()
+                except TypeError:
+                    # Some bindings expose a descriptor without args but with a different signature.
+                    try:
+                        fn  # noqa: B018
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+                return
 
     def pose_rpy(self) -> Tuple[np.ndarray, np.ndarray]:
         """
@@ -956,12 +1001,12 @@ class MujocoDroneHoopsEnv(gym.Env):
     def close(self):
         """Clean up resources."""
         try:
-            self.renderer.close()
+            self._close_renderer(self.renderer)
         except Exception as e:
             logger.warning(f"Error closing main renderer: {e}")
         for key, r in list(self._extra_renderers.items()):
             try:
-                r.close()
+                self._close_renderer(r)
             except Exception as e:
                 logger.warning(f"Error closing renderer at {key}: {e}")
         self._extra_renderers = {}

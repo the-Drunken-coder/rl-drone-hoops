@@ -13,7 +13,7 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 # Headless default.
-if "MUJOCO_GL" not in os.environ and "DISPLAY" not in os.environ:
+if sys.platform != "win32" and "MUJOCO_GL" not in os.environ and "DISPLAY" not in os.environ:
     os.environ["MUJOCO_GL"] = "egl"
 
 from rl_drone_hoops.envs import MujocoDroneHoopsEnv  # noqa: E402

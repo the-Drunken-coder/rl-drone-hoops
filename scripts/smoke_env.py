@@ -7,7 +7,7 @@ import sys
 import numpy as np
 
 # Headless default.
-if "MUJOCO_GL" not in os.environ and "DISPLAY" not in os.environ:
+if sys.platform != "win32" and "MUJOCO_GL" not in os.environ and "DISPLAY" not in os.environ:
     os.environ["MUJOCO_GL"] = "egl"
 
 # Allow running from a source checkout without installing the package.

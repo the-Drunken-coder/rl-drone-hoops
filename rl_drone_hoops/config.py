@@ -133,6 +133,7 @@ def extract_ppo_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
     env_cfg = cfg.get("environment", {})
     track_cfg = cfg.get("track", {})
     eval_cfg = cfg.get("evaluation", {})
+    sys_cfg = cfg.get("system", {})
 
     return {
         # PPO params
@@ -151,6 +152,7 @@ def extract_ppo_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
         "adam_eps": ppo_cfg.get("adam_eps", 1e-5),
         "update_epochs": ppo_cfg.get("update_epochs", 4),
         "minibatch_envs": ppo_cfg.get("minibatch_envs", 4),
+        "vec_mode": sys_cfg.get("vec_mode", "auto"),
 
         # Environment params
         "image_size": env_cfg.get("image_size", 96),
