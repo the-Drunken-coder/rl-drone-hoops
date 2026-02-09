@@ -1,0 +1,30 @@
+step=512 sps=206.8 kl=0.0059 clipfrac=0.083 ev=0.001
+step=1024 sps=207.9 kl=0.0147 clipfrac=0.129 ev=0.007
+step=1536 sps=207.7 kl=0.0086 clipfrac=0.141 ev=0.009
+step=2048 sps=204.1 kl=0.0164 clipfrac=0.249 ev=-0.000
+step=2560 sps=203.7 kl=0.0079 clipfrac=0.109 ev=0.084
+step=3072 sps=203.3 kl=0.0205 clipfrac=0.209 ev=0.060
+step=3584 sps=201.3 kl=0.0149 clipfrac=0.229 ev=-0.021
+step=4096 sps=201.4 kl=0.0148 clipfrac=0.062 ev=-0.006
+step=4608 sps=198.5 kl=0.0064 clipfrac=0.203 ev=0.064
+step=5120 sps=199.1 kl=0.0078 clipfrac=0.189 ev=0.040
+Error closing main renderer: 'Renderer' object has no attribute 'close'
+Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
+eval: {'eval/return_mean': -83.766, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
+
+*** NEW BEST MODEL ***
+  Gates: 0.0
+  Success rate: 0.0%
+  Return: -83.8
+  Saved to: models\best_model_step000005120.pt
+
+step=5632 sps=177.4 kl=0.0201 clipfrac=0.264 ev=0.047
+step=6144 sps=179.3 kl=0.0234 clipfrac=0.248 ev=0.031
+step=6656 sps=181.2 kl=0.0146 clipfrac=0.165 ev=0.037
+step=7168 sps=182.9 kl=0.0028 clipfrac=0.065 ev=0.059
+step=7680 sps=184.4 kl=0.0170 clipfrac=0.108 ev=0.055
+step=8192 sps=185.4 kl=0.0057 clipfrac=0.069 ev=0.036
+step=8704 sps=186.2 kl=0.0050 clipfrac=0.022 ev=0.039
+step=9216 sps=186.8 kl=0.0033 clipfrac=0.135 ev=0.036
+step=9728 sps=187.1 kl=-0.0006 clipfrac=0.000 ev=0.051
+step=10240 sps=186.6 kl=0.0037 clipfrac=0.030 ev=0.103

@@ -1,0 +1,47 @@
+# Fast CPU-friendly training configuration
+# Good for quick testing and iteration on modest hardware
+
+ppo:
+  num_envs: 1
+  total_steps: 4096
+  rollout_steps: 64
+  lr: 3e-4
+
+evaluation:
+  eval_every_steps: 2048
+  eval_episodes: 1
+
+environment:
+  image_size: 64              # Smaller images = faster training
+  camera_fps: 20.0            # Reduced from 60 Hz
+  imu_hz: 200.0               # Reduced from 400 Hz
+  control_hz: 50.0            # Reduced from 100 Hz
+  physics_hz: 500.0           # Reduced from 1000 Hz
+
+track:
+  track_type: "straight"
+  n_gates: 2
+  gate_radius: 1.5
+  episode_duration_s: 8.0
+
+curriculum:
+  stages:
+    - step: 0
+      description: "Easy: straight, large gates"
+      overrides:
+        gate_radius: 1.5
+        n_gates: 2
+        track_type: "straight"
+
+video:
+  enabled: true
+  size: 128
+  fps: 15
+
+logging:
+  verbose: true
+  log_interval: 256
+
+system:
+  headless_gl: "auto"
+  mujoco_threads: 1

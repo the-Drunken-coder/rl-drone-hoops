@@ -1,0 +1,155 @@
+# Default training configuration for RL Drone Hoops
+# All settings can be overridden via CLI args which take precedence
+
+# ============================================================================
+# PPO Hyperparameters
+# ============================================================================
+ppo:
+  seed: 0
+  device: "auto"  # "auto", "cpu", or "cuda"
+
+  # Training loop
+  num_envs: 4
+  total_steps: 200_000
+  rollout_steps: 128
+
+  # PPO algorithm
+  gamma: 0.99                 # Discount factor
+  gae_lambda: 0.95            # GAE lambda for advantage estimation
+  clip_coef: 0.2              # PPO clipping coefficient
+  vf_coef: 0.5                # Value function loss weight
+  ent_coef: 0.01              # Entropy regularization weight
+  max_grad_norm: 0.5          # Gradient clipping norm
+  lr: 3e-4                    # Learning rate
+
+  # Optimization
+  update_epochs: 4            # Number of passes over rollout data per update
+  minibatch_envs: 4           # Environments per minibatch (preserves RNN sequences)
+  adam_eps: 1e-5              # Adam optimizer epsilon
+
+# ============================================================================
+# Evaluation & Checkpointing
+# ============================================================================
+evaluation:
+  eval_every_steps: 50_000    # Frequency of evaluation in environment steps
+  eval_episodes: 3            # Number of episodes per evaluation
+  checkpoint_keep: 5          # Keep last N checkpoints (older ones deleted)
+
+# ============================================================================
+# Environment Settings (Sensors, Timing, Physics)
+# ============================================================================
+environment:
+  # Camera
+  image_size: 96              # FPV camera resolution (square, pixels)
+  image_rot90: 0              # Rotate FPV image CCW by 90deg this many times (0-3)
+  camera_fps: 60.0            # FPV camera sampling rate (Hz)
+  camera_latency_ms: 20.0     # Approximate camera latency (ms)
+
+  # IMU
+  imu_hz: 400.0               # IMU sampling rate (Hz)
+  imu_latency_ms: 2.0         # Approximate IMU latency (ms)
+
+  # Control loop
+  control_hz: 100.0           # Control/action update rate (Hz)
+  control_latency_ms: 10.0    # Approximate action latency (ms)
+
+  # Physics simulation
+  physics_hz: 1000.0          # Physics integration rate (Hz)
+
+  # Drone dynamics
+  max_tilt_deg: 75.0          # Maximum allowed roll/pitch before termination (degrees)
+
+# ============================================================================
+# Track / Episode Configuration
+# ============================================================================
+track:
+  track_type: "straight"      # "straight" or "random_turns"
+  n_gates: 3                  # Number of gates per episode
+  gate_radius: 1.25           # Gate radius in meters
+  turn_max_deg: 20.0          # Maximum turn angle in track generation (degrees)
+  episode_duration_s: 12.0    # Episode duration in seconds (soft timeout)
+
+# ============================================================================
+# Curriculum Learning
+# ============================================================================
+curriculum:
+  # List of stages with step threshold and environment overrides
+  stages:
+    - step: 0
+      description: "Easy: straight track, large gates, few gates"
+      overrides:
+        gate_radius: 1.25
+        n_gates: 3
+        track_type: "straight"
+
+    - step: 200_000
+      description: "Medium: more gates, smaller radius"
+      overrides:
+        gate_radius: 1.0
+        n_gates: 5
+        track_type: "straight"
+
+    - step: 600_000
+      description: "Hard: random turns, challenging gates"
+      overrides:
+        gate_radius: 0.8
+        n_gates: 7
+        track_type: "random_turns"
+        turn_max_deg: 25.0
+
+# ============================================================================
+# Model Architecture
+# ============================================================================
+model:
+  # Vision encoder (CNN)
+  cnn_channels: [16, 32, 64]  # Channel sizes per conv layer
+  cnn_kernel: 3               # Kernel size for conv layers
+  cnn_stride: 2               # Stride for conv layers
+
+  # IMU encoder
+  imu_hidden: 64              # Hidden size for IMU MLP
+
+  # Recurrent policy
+  rnn_type: "gru"             # "gru" or "lstm"
+  rnn_hidden: 256             # RNN hidden size
+
+  # Actor/Critic heads
+  actor_hidden: 256           # Actor MLP hidden size
+  critic_hidden: 256          # Critic MLP hidden size
+
+# ============================================================================
+# Video Rendering (Evaluation & Logging)
+# ============================================================================
+video:
+  # Video output during training eval
+  enabled: true
+  size: 256                   # Output video resolution (square pixels)
+  fps: 30                     # Output video frame rate (Hz)
+  overlay: true               # Overlay debug text on videos
+
+  # When to record (during training)
+  record_first_episode_only: true  # Record only first episode per eval
+
+  # Video quality
+  quality: "high"             # "low" (lower bitrate), "medium", or "high"
+  codec: "h264"               # Video codec ("h264", "h265", etc.)
+
+# ============================================================================
+# Logging & Checkpointing
+# ============================================================================
+logging:
+  tensorboard: true           # Write TensorBoard event files
+  verbose: true               # Verbose console output
+  log_interval: 512           # Log metrics every N steps
+
+checkpointing:
+  save_interval: 512          # Save checkpoint every N steps
+  save_on_eval: true          # Save checkpoint after each eval
+
+# ============================================================================
+# System & Performance
+# ============================================================================
+system:
+  headless_gl: "auto"         # "auto" (detect), "egl", "osmesa", or "off"
+  mujoco_threads: 1           # MuJoCo parallel threads per env
+  pin_memory: true            # Pin PyTorch tensors to GPU memory

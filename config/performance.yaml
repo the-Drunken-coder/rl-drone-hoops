@@ -1,0 +1,117 @@
+# High-performance training configuration
+# For powerful GPUs with multiple cores - longer rollouts and larger batches
+
+ppo:
+  seed: 0
+  device: "auto"
+
+  num_envs: 16
+  total_steps: 1_000_000
+  rollout_steps: 256
+
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_coef: 0.2
+  vf_coef: 0.5
+  ent_coef: 0.005
+  max_grad_norm: 0.5
+  lr: 3e-4
+  adam_eps: 1e-5
+
+  update_epochs: 4
+  minibatch_envs: 8
+
+evaluation:
+  eval_every_steps: 25_000
+  eval_episodes: 5
+  checkpoint_keep: 10
+
+environment:
+  image_size: 128             # Larger images
+  image_rot90: 0
+  camera_fps: 60.0
+  camera_latency_ms: 20.0
+
+  imu_hz: 400.0
+  imu_latency_ms: 2.0
+
+  control_hz: 100.0
+  control_latency_ms: 10.0
+
+  physics_hz: 1000.0
+  max_tilt_deg: 75.0
+
+track:
+  track_type: "random_turns"
+  n_gates: 7
+  gate_radius: 0.8
+  turn_max_deg: 25.0
+  episode_duration_s: 12.0
+
+curriculum:
+  stages:
+    - step: 0
+      description: "Stage 1: Easy, straight track"
+      overrides:
+        gate_radius: 1.25
+        n_gates: 3
+        track_type: "straight"
+
+    - step: 100_000
+      description: "Stage 2: Medium, more gates"
+      overrides:
+        gate_radius: 1.0
+        n_gates: 5
+        track_type: "straight"
+
+    - step: 300_000
+      description: "Stage 3: Hard, random turns"
+      overrides:
+        gate_radius: 0.8
+        n_gates: 7
+        track_type: "random_turns"
+        turn_max_deg: 25.0
+
+    - step: 600_000
+      description: "Stage 4: Expert, tiny gates"
+      overrides:
+        gate_radius: 0.6
+        n_gates: 10
+        track_type: "random_turns"
+        turn_max_deg: 30.0
+
+model:
+  cnn_channels: [32, 64, 128]
+  cnn_kernel: 3
+  cnn_stride: 2
+
+  imu_hidden: 128
+
+  rnn_type: "gru"
+  rnn_hidden: 512
+
+  actor_hidden: 256
+  critic_hidden: 256
+
+video:
+  enabled: true
+  size: 512
+  fps: 60
+  overlay: true
+  record_first_episode_only: true
+  quality: "high"
+  codec: "h264"
+
+logging:
+  tensorboard: true
+  verbose: true
+  log_interval: 1024
+
+checkpointing:
+  save_interval: 1024
+  save_on_eval: true
+
+system:
+  headless_gl: "auto"
+  mujoco_threads: 4
+  pin_memory: true

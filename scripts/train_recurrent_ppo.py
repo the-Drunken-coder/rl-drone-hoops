@@ -5,6 +5,7 @@ import argparse
 import os
 import sys
 from datetime import datetime
+from typing import Any
 
 import torch
 
@@ -17,30 +18,9 @@ if _ROOT not in sys.path:
 if "MUJOCO_GL" not in os.environ and "DISPLAY" not in os.environ:
     os.environ["MUJOCO_GL"] = "egl"
 
+from rl_drone_hoops.config import load_config, extract_ppo_config, extract_curriculum  # noqa: E402
 from rl_drone_hoops.rl.ppo_recurrent import PPOConfig, train_ppo_recurrent  # noqa: E402
 from rl_drone_hoops.utils.checkpoint import latest_checkpoint_path  # noqa: E402
-
-
-_DEFAULTS = dict(
-    seed=0,
-    device="auto",
-    num_envs=4,
-    total_steps=200_000,
-    rollout_steps=128,
-    image_size=96,
-    image_rot90=0,
-    camera_fps=60.0,
-    imu_hz=400.0,
-    control_hz=100.0,
-    physics_hz=1000.0,
-    track_type="straight",
-    gate_radius=1.25,
-    turn_max_deg=20.0,
-    n_gates=3,
-    episode_s=12.0,
-    eval_every_steps=50_000,
-    eval_episodes=3,
-)
 
 
 def _latest_run_dir(base_dir: str = "runs") -> str:
@@ -64,38 +44,87 @@ def _latest_checkpoint(run_dir: str) -> str:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--run-dir", type=str, default="")
-    ap.add_argument("--resume", action="store_true", help="Resume from latest checkpoint in the run dir.")
-    ap.add_argument("--checkpoint", type=str, default="", help="Resume from an explicit checkpoint path.")
-    ap.add_argument("--seed", type=int, default=None)
-    ap.add_argument("--device", type=str, default=None)
+    ap = argparse.ArgumentParser(
+        description="Train recurrent PPO policy for drone racing through hoops.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Train with default config
+  python3 train_recurrent_ppo.py
 
+  # Train with custom config file
+  python3 train_recurrent_ppo.py --config config/fast-train.yaml
+
+  # Override config values via CLI (takes precedence over config file)
+  python3 train_recurrent_ppo.py --eval-every-steps 5000 --num-envs 8
+
+  # Resume from latest checkpoint
+  python3 train_recurrent_ppo.py --run-dir runs/my_run --resume
+
+  # Resume and change eval frequency
+  python3 train_recurrent_ppo.py --run-dir runs/my_run --resume --eval-every-steps 5000
+        """,
+    )
+
+    # Config file
+    ap.add_argument("--config", type=str, default="", help="Path to YAML/JSON config file (uses default if not specified).")
+
+    # Run management
+    ap.add_argument("--run-dir", type=str, default="", help="Directory for checkpoints and logs.")
+    ap.add_argument("--resume", action="store_true", help="Resume from latest checkpoint in --run-dir.")
+    ap.add_argument("--checkpoint", type=str, default="", help="Resume from explicit checkpoint path.")
+
+    # PPO hyperparameters (override config file)
+    ap.add_argument("--seed", type=int, default=None)
+    ap.add_argument("--device", type=str, default=None, choices=["auto", "cpu", "cuda"])
     ap.add_argument("--num-envs", type=int, default=None)
     ap.add_argument("--total-steps", type=int, default=None)
     ap.add_argument("--rollout-steps", type=int, default=None)
+    ap.add_argument("--gamma", type=float, default=None, help="Discount factor")
+    ap.add_argument("--gae-lambda", type=float, default=None, help="GAE lambda")
+    ap.add_argument("--lr", type=float, default=None, help="Learning rate")
+    ap.add_argument("--clip-coef", type=float, default=None, help="PPO clipping coefficient")
+    ap.add_argument("--vf-coef", type=float, default=None, help="Value function loss weight")
+    ap.add_argument("--ent-coef", type=float, default=None, help="Entropy regularization weight")
+    ap.add_argument("--max-grad-norm", type=float, default=None, help="Gradient clipping norm")
+    ap.add_argument("--update-epochs", type=int, default=None, help="PPO update epochs per rollout")
 
-    ap.add_argument("--image-size", type=int, default=None)
+    # Environment parameters
+    ap.add_argument("--image-size", type=int, default=None, help="FPV camera resolution (square)")
     ap.add_argument("--image-rot90", type=int, default=None, help="Rotate FPV image CCW by 90deg k times (0..3).")
     ap.add_argument("--camera-fps", type=float, default=None)
     ap.add_argument("--imu-hz", type=float, default=None)
     ap.add_argument("--control-hz", type=float, default=None)
     ap.add_argument("--physics-hz", type=float, default=None)
+
+    # Track parameters
     ap.add_argument("--track-type", type=str, default=None, choices=["straight", "random_turns"])
     ap.add_argument("--gate-radius", type=float, default=None)
     ap.add_argument("--turn-max-deg", type=float, default=None)
     ap.add_argument("--n-gates", type=int, default=None)
     ap.add_argument("--episode-s", type=float, default=None)
 
+    # Evaluation
     ap.add_argument("--eval-every-steps", type=int, default=None)
     ap.add_argument("--eval-episodes", type=int, default=None)
+
     args = ap.parse_args()
 
+    # Load base config from file
+    try:
+        base_config = load_config(args.config if args.config else None)
+    except Exception as e:
+        print(f"Error loading config: {e}", file=sys.stderr)
+        return 1
+
+    # Extract PPO config from file
+    ppo_config_dict = extract_ppo_config(base_config)
+
+    # Determine run directory and check for checkpoint config
     resume_from = ""
     if args.checkpoint:
         resume_from = args.checkpoint
         if not args.run_dir:
-            # .../runs/<run>/checkpoints/step....pt -> .../runs/<run>
             run_dir = os.path.dirname(os.path.dirname(os.path.normpath(resume_from)))
         else:
             run_dir = args.run_dir
@@ -109,20 +138,24 @@ def main() -> int:
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
             run_dir = os.path.join("runs", f"ppo_rnn_{ts}")
 
-    ckpt_cfg = {}
+    # Load config from checkpoint if resuming
+    ckpt_config = {}
     if resume_from:
         ckpt = torch.load(resume_from, map_location="cpu")
-        ckpt_cfg = dict(ckpt.get("cfg", {}) or {})
-        if not args.run_dir and isinstance(ckpt_cfg.get("run_dir"), str) and ckpt_cfg["run_dir"]:
-            run_dir = ckpt_cfg["run_dir"]
+        ckpt_config = dict(ckpt.get("cfg", {}) or {})
+        if not args.run_dir and isinstance(ckpt_config.get("run_dir"), str) and ckpt_config["run_dir"]:
+            run_dir = ckpt_config["run_dir"]
 
-    def pick(name: str):
-        v = getattr(args, name)
-        if v is not None:
-            return v
-        if name in ckpt_cfg:
-            return ckpt_cfg[name]
-        return _DEFAULTS[name]
+    # Priority: CLI args > checkpoint config > file config
+    def pick(name: str, ppo_name: str | None = None) -> Any:
+        """Pick value with priority: CLI > checkpoint > config file."""
+        cli_name = ppo_name or name.replace("_", "-")
+        cli_value = getattr(args, cli_name.replace("-", "_"), None)
+        if cli_value is not None:
+            return cli_value
+        if name in ckpt_config:
+            return ckpt_config[name]
+        return ppo_config_dict[name]
 
     cfg = PPOConfig(
         run_dir=run_dir,
@@ -144,14 +177,20 @@ def main() -> int:
         episode_s=float(pick("episode_s")),
         eval_every_steps=int(pick("eval_every_steps")),
         eval_episodes=int(pick("eval_episodes")),
+        gamma=float(pick("gamma")),
+        gae_lambda=float(pick("gae_lambda", "gae-lambda")),
+        clip_coef=float(pick("clip_coef", "clip-coef")),
+        vf_coef=float(pick("vf_coef", "vf-coef")),
+        ent_coef=float(pick("ent_coef", "ent-coef")),
+        max_grad_norm=float(pick("max_grad_norm", "max-grad-norm")),
+        lr=float(pick("lr")),
+        adam_eps=float(pick("adam_eps")),
+        update_epochs=int(pick("update_epochs", "update-epochs")),
+        minibatch_envs=int(pick("minibatch_envs")),
     )
 
-    # Simple curriculum (optional): thresholds in env-steps.
-    curriculum = [
-        (0, {"gate_radius": max(cfg.gate_radius, 1.25), "n_gates": min(cfg.n_gates, 3), "track_type": "straight"}),
-        (200_000, {"gate_radius": 1.0, "n_gates": 5, "track_type": cfg.track_type}),
-        (600_000, {"gate_radius": 0.8, "n_gates": 7, "track_type": "random_turns", "turn_max_deg": max(25.0, cfg.turn_max_deg)}),
-    ]
+    # Load curriculum from config
+    curriculum = extract_curriculum(base_config)
 
     train_ppo_recurrent(cfg, curriculum=curriculum, resume_from=resume_from or None)
     return 0

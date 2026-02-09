@@ -19,6 +19,7 @@ from rl_drone_hoops.envs import MujocoDroneHoopsEnv
 from rl_drone_hoops.rl.distributions import SquashedDiagGaussian
 from rl_drone_hoops.rl.model import RecurrentActorCritic
 from rl_drone_hoops.rl.vec import InProcessVecEnv
+from rl_drone_hoops.utils.best_model_tracker import BestModelTracker
 
 logger = logging.getLogger(__name__)
 
@@ -62,8 +63,8 @@ class PPOConfig:
     seed: int = 0
     device: str = "auto"
 
-    num_envs: int = 8
-    total_steps: int = 1_000_000
+    num_envs: int = 4
+    total_steps: int = 200_000
     rollout_steps: int = 128
 
     gamma: float = 0.99
@@ -73,12 +74,13 @@ class PPOConfig:
     ent_coef: float = 0.01
     max_grad_norm: float = 0.5
     lr: float = 3e-4
+    adam_eps: float = 1e-5
 
     update_epochs: int = 4
     minibatch_envs: int = 4  # recurrent PPO minibatches by env sequences
 
     eval_every_steps: int = 50_000
-    eval_episodes: int = 5
+    eval_episodes: int = 3
 
     # Env params (can be overridden per curriculum stage by caller)
     image_size: int = 96
@@ -289,9 +291,12 @@ def train_ppo_recurrent(
 
     imu_window_n = obs["imu"].shape[1]
     model = RecurrentActorCritic(image_size=cfg.image_size, imu_window_n=imu_window_n).to(device)
-    opt = Adam(model.parameters(), lr=cfg.lr, eps=1e-5)
+    opt = Adam(model.parameters(), lr=cfg.lr, eps=cfg.adam_eps)
 
     writer = SummaryWriter(log_dir=os.path.join(cfg.run_dir, "tb"))
+
+    # Best model tracking (auto-saves to models/ folder)
+    best_model_tracker = BestModelTracker(models_dir="models")
     writer.add_text("config", str(cfg))
 
     # Rollout storage.
@@ -522,6 +527,17 @@ def train_ppo_recurrent(
             for k, v in eval_metrics.items():
                 writer.add_scalar(k, v, global_step)
             print("eval:", {k: round(v, 3) for k, v in eval_metrics.items()}, flush=True)
+
+            # Check if this is the best model and save if so
+            latest_ckpt = os.path.join(cfg.run_dir, "checkpoints", f"step{global_step:09d}.pt")
+            if os.path.exists(latest_ckpt):
+                best_model_tracker.check_and_save(
+                    eval_metrics,
+                    latest_ckpt,
+                    os.path.basename(os.path.normpath(cfg.run_dir)),
+                    global_step,
+                )
+
             next_eval += cfg.eval_every_steps
 
     venv.close()
