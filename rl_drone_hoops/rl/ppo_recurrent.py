@@ -94,6 +94,7 @@ class PPOConfig:
     turn_max_deg: float = 20.0
     n_gates: int = 3
     episode_s: float = 12.0
+    use_isaac: bool = False  # Use Isaac Gym GPU-accelerated environment
 
 
 def _move_opt_state_to_device(opt: torch.optim.Optimizer, device: torch.device) -> None:
@@ -268,27 +269,50 @@ def train_ppo_recurrent(
     device = _device(cfg)
 
     # Build vector envs.
-    def make_env(rank: int):
-        def _fn():
-            return MujocoDroneHoopsEnv(
-                seed=cfg.seed + 1000 * rank,
-                image_size=cfg.image_size,
-                image_rot90=cfg.image_rot90,
-                camera_fps=cfg.camera_fps,
-                imu_hz=cfg.imu_hz,
-                control_hz=cfg.control_hz,
-                physics_hz=cfg.physics_hz,
-                n_gates=cfg.n_gates,
-                gate_radius=cfg.gate_radius,
-                track_type=cfg.track_type,
-                turn_max_deg=cfg.turn_max_deg,
-                episode_s=cfg.episode_s,
-            )
+    if cfg.use_isaac:
+        from rl_drone_hoops.envs.isaac_gymnasium_env import IsaacDroneHoopsEnv, IsaacEnvConfig
 
-        return _fn
+        isaac_config = IsaacEnvConfig(
+            num_envs=cfg.num_envs,
+            image_size=cfg.image_size,
+            camera_fps=cfg.camera_fps,
+            imu_hz=cfg.imu_hz,
+            control_hz=cfg.control_hz,
+            physics_hz=cfg.physics_hz,
+            n_gates=cfg.n_gates,
+            gate_radius=cfg.gate_radius,
+            track_type=cfg.track_type,
+            turn_max_deg=cfg.turn_max_deg,
+            episode_duration_s=cfg.episode_s,
+            device=str(device),
+            seed=cfg.seed,
+        )
+        venv = IsaacDroneHoopsEnv(config=isaac_config)
+        obs, _ = venv.reset(seed=cfg.seed)
+        # Convert torch tensors to numpy for compatibility with existing PPO code
+        obs = {k: v.cpu().numpy() if hasattr(v, 'cpu') else v for k, v in obs.items()}
+    else:
+        def make_env(rank: int):
+            def _fn():
+                return MujocoDroneHoopsEnv(
+                    seed=cfg.seed + 1000 * rank,
+                    image_size=cfg.image_size,
+                    image_rot90=cfg.image_rot90,
+                    camera_fps=cfg.camera_fps,
+                    imu_hz=cfg.imu_hz,
+                    control_hz=cfg.control_hz,
+                    physics_hz=cfg.physics_hz,
+                    n_gates=cfg.n_gates,
+                    gate_radius=cfg.gate_radius,
+                    track_type=cfg.track_type,
+                    turn_max_deg=cfg.turn_max_deg,
+                    episode_s=cfg.episode_s,
+                )
 
-    venv = InProcessVecEnv([make_env(i) for i in range(cfg.num_envs)])
-    obs = venv.reset(seeds=[cfg.seed + i for i in range(cfg.num_envs)])
+            return _fn
+
+        venv = InProcessVecEnv([make_env(i) for i in range(cfg.num_envs)])
+        obs = venv.reset(seeds=[cfg.seed + i for i in range(cfg.num_envs)])
 
     imu_window_n = obs["imu"].shape[1]
     model = RecurrentActorCritic(image_size=cfg.image_size, imu_window_n=imu_window_n).to(device)

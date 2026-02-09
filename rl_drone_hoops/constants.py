@@ -25,6 +25,11 @@ EPS_GRAD_UNDERFLOW = 20.0  # Clamp log-ratios to [-EPS_GRAD_UNDERFLOW, +EPS_GRAD
 # Renderer cache
 MAX_CACHED_RENDERERS = 5  # Maximum number of renderers to cache at different resolutions
 
+# Isaac Gym defaults
+DEFAULT_ISAAC_NUM_ENVS = 256  # Default parallel GPU environments
+DEFAULT_ISAAC_SPACING = 10.0  # Default spacing between environments (meters)
+DEFAULT_ISAAC_SUBSTEPS = 2  # Default physics substeps per sim step
+
 # XML element names
 XML_CAMERA_NAME = "fpv"
 XML_DRONE_BODY_NAME = "drone"

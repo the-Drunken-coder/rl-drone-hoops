@@ -4,3 +4,6 @@ tensorboard
 imageio
 imageio-ffmpeg
 
+# Isaac Gym (optional, requires NVIDIA registration):
+# See https://developer.nvidia.com/isaac-gym for installation instructions.
+# isaac-gym

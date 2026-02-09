@@ -108,6 +108,9 @@ Examples:
     ap.add_argument("--eval-every-steps", type=int, default=None)
     ap.add_argument("--eval-episodes", type=int, default=None)
 
+    # Isaac Gym option
+    ap.add_argument("--use-isaac", action="store_true", help="Use Isaac Gym GPU-accelerated environment instead of MuJoCo.")
+
     args = ap.parse_args()
 
     # Load base config from file
@@ -187,6 +190,7 @@ Examples:
         adam_eps=float(pick("adam_eps")),
         update_epochs=int(pick("update_epochs", "update-epochs")),
         minibatch_envs=int(pick("minibatch_envs")),
+        use_isaac=bool(args.use_isaac),
     )
 
     # Load curriculum from config
