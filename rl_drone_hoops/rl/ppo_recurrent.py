@@ -531,11 +531,19 @@ def train_ppo_recurrent(
             # Check if this is the best model and save if so
             latest_ckpt = os.path.join(cfg.run_dir, "checkpoints", f"step{global_step:09d}.pt")
             if os.path.exists(latest_ckpt):
+                # Pass current curriculum for difficulty tracking
+                curriculum_info = {
+                    "n_gates": current_env_kwargs().get("n_gates", 3),
+                    "gate_radius": current_env_kwargs().get("gate_radius", 1.25),
+                    "track_type": current_env_kwargs().get("track_type", "straight"),
+                    "turn_max_deg": current_env_kwargs().get("turn_max_deg", 20.0),
+                }
                 best_model_tracker.check_and_save(
                     eval_metrics,
                     latest_ckpt,
                     os.path.basename(os.path.normpath(cfg.run_dir)),
                     global_step,
+                    curriculum=curriculum_info,
                 )
 
             next_eval += cfg.eval_every_steps

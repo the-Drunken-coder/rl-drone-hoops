@@ -45,6 +45,7 @@ class BestModelTracker:
             "checkpoint_path": None,
             "run_name": None,
             "step": 0,
+            "curriculum": {},  # Track curriculum params
         }
 
     def _save_metadata(self) -> None:
@@ -53,30 +54,77 @@ class BestModelTracker:
             json.dump(self.best_metadata, f, indent=2)
         logger.info(f"Saved metadata to {self.metadata_file}")
 
+    def _curriculum_difficulty_score(self, curriculum: Dict[str, Any]) -> float:
+        """Calculate difficulty score of curriculum.
+
+        Higher score = harder curriculum.
+
+        Args:
+            curriculum: Dict with keys like n_gates, gate_radius, track_type, turn_max_deg
+
+        Returns:
+            Scalar difficulty score
+        """
+        n_gates = curriculum.get("n_gates", 3)
+        gate_radius = curriculum.get("gate_radius", 1.25)
+        track_type = curriculum.get("track_type", "straight")
+        turn_max_deg = curriculum.get("turn_max_deg", 20.0)
+
+        # Difficulty increases with: more gates, smaller radius, random turns, sharper turns
+        score = 0.0
+        score += n_gates * 10.0  # Each gate adds 10 difficulty points
+        score += (2.0 - gate_radius) * 5.0  # Smaller radius = harder (1.25 = 3.75, 0.5 = 7.5)
+        if track_type == "random_turns":
+            score += 20.0
+        score += turn_max_deg * 0.5
+
+        return score
+
     def check_and_save(
         self,
         eval_metrics: Dict[str, float],
         checkpoint_path: str | Path,
         run_name: str,
         step: int,
+        curriculum: Dict[str, Any] | None = None,
     ) -> bool:
         """Check if current checkpoint is better than best. If so, save it.
+
+        Curriculum-aware: only replaces old model if:
+        - New curriculum is same/harder, OR
+        - Metrics are significantly better (gates+50% on same curriculum)
 
         Args:
             eval_metrics: Dict with keys: eval/return_mean, eval/gates_mean, eval/finished_rate
             checkpoint_path: Path to current checkpoint file
             run_name: Name of current training run
             step: Global training step
+            curriculum: Dict with curriculum params (n_gates, gate_radius, track_type, turn_max_deg)
 
         Returns:
             True if this checkpoint became the new best
         """
+        if curriculum is None:
+            curriculum = {}
+
         current_return = eval_metrics.get("eval/return_mean", -float("inf"))
         current_gates = eval_metrics.get("eval/gates_mean", 0.0)
         current_success = eval_metrics.get("eval/finished_rate", 0.0)
 
+        old_curriculum = self.best_metadata.get("curriculum", {})
+        old_difficulty = self._curriculum_difficulty_score(old_curriculum)
+        new_difficulty = self._curriculum_difficulty_score(curriculum)
+
+        # Check curriculum difference
+        curriculum_differs = old_curriculum != curriculum
+        if curriculum_differs:
+            logger.info(
+                f"Curriculum changed: old difficulty={old_difficulty:.1f}, "
+                f"new difficulty={new_difficulty:.1f}"
+            )
+
         # Prioritize by: gates passed > success rate > return
-        is_better = (
+        basic_is_better = (
             current_gates > self.best_metadata["best_gates"]
             or (
                 current_gates == self.best_metadata["best_gates"]
@@ -89,15 +137,38 @@ class BestModelTracker:
             )
         )
 
-        if is_better:
-            return self._save_best_model(
+        # If curriculum got easier, require significant improvement
+        if new_difficulty < old_difficulty:
+            # Require 50% more gates on easier curriculum to replace
+            gates_improvement_needed = self.best_metadata["best_gates"] * 1.5
+            is_better = current_gates > gates_improvement_needed
+            if not is_better and curriculum_differs:
+                logger.warning(
+                    f"New model on EASIER curriculum rejected: "
+                    f"gates={current_gates:.1f} (need {gates_improvement_needed:.1f}). "
+                    f"Use --force-best-model to override."
+                )
+            return is_better and self._save_best_model(
                 checkpoint_path,
                 run_name,
                 step,
                 current_return,
                 current_gates,
                 current_success,
+                curriculum,
             )
+        # Same or harder curriculum: use basic comparison
+        else:
+            if basic_is_better:
+                return self._save_best_model(
+                    checkpoint_path,
+                    run_name,
+                    step,
+                    current_return,
+                    current_gates,
+                    current_success,
+                    curriculum,
+                )
 
         return False
 
@@ -109,6 +180,7 @@ class BestModelTracker:
         current_return: float,
         current_gates: float,
         current_success: float,
+        curriculum: Dict[str, Any] | None = None,
     ) -> bool:
         """Save checkpoint as new best model.
 
@@ -129,6 +201,17 @@ class BestModelTracker:
                 logger.error(f"Checkpoint not found: {checkpoint_path}")
                 return False
 
+            # Delete old best model to save space
+            old_path = self.best_metadata.get("checkpoint_path")
+            if old_path:
+                old_path_obj = Path(old_path)
+                if old_path_obj.exists():
+                    try:
+                        old_path_obj.unlink()
+                        logger.info(f"Deleted old best model: {old_path}")
+                    except Exception as e:
+                        logger.warning(f"Could not delete old best model: {e}")
+
             # Save with run_name and step in filename
             best_model_path = self.models_dir / f"best_model_step{step:09d}.pt"
             shutil.copy2(checkpoint_path, best_model_path)
@@ -142,6 +225,7 @@ class BestModelTracker:
                     "checkpoint_path": str(best_model_path),
                     "run_name": run_name,
                     "step": step,
+                    "curriculum": curriculum or {},
                 }
             )
             self._save_metadata()
