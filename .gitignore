@@ -26,8 +26,10 @@ env/
 # Training artifacts (large / machine-local)
 runs/
 videos/
-*.pt
 *.mp4
 *.tfevents.*
 
-models/
+# Model checkpoints (large), but keep metadata
+models/*.pt
+!models/.gitkeep
+!models/best_model.json
