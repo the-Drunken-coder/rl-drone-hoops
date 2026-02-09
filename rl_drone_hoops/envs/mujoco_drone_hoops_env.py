@@ -286,9 +286,6 @@ class MujocoDroneHoopsEnv(gym.Env):
         self._imu_write_idx = 0  # Current write position
         self._imu_count = 0  # Total samples written (for wraparound handling)
 
-        # Keep old _imu_history for backward compatibility during transition
-        self._imu_history: list[np.ndarray] = []
-
         # Action latency.
         self._act_queue: list[tuple[float, np.ndarray]] = []  # (apply_ts, action_scaled)
         self._applied_action = np.zeros(4, dtype=np.float64)
@@ -307,7 +304,6 @@ class MujocoDroneHoopsEnv(gym.Env):
 
         # Rotation matrix caching (1.1: Cache Rotation Matrix Conversions)
         self._R_cache: Optional[np.ndarray] = None
-        self._R_prev_cache: Optional[np.ndarray] = None
         self._q_cache: Optional[np.ndarray] = None
 
         # Pre-allocate working buffers (1.2: Eliminate Redundant Array Copies)
@@ -329,9 +325,6 @@ class MujocoDroneHoopsEnv(gym.Env):
         self._current_gate_normal: np.ndarray = np.zeros(3, dtype=np.float64)
         self._current_gate_radius: float = 0.0
         self._current_gate_radius_sq: float = 0.0
-
-        # (Optimization 2.3: Track scene changes for renderer updates)
-        self._scene_dirty = True  # Start dirty to ensure first render updates scene
 
         self._build_track()
         self._sync_gate_sites()
@@ -425,9 +418,7 @@ class MujocoDroneHoopsEnv(gym.Env):
                 center = np.array([x, y, z], dtype=np.float64)
                 normal = np.array([1.0, 0.0, 0.0], dtype=np.float64)
                 self.gates.append(Gate(center=center, normal=unit(normal), radius=self.gate_radius))
-            return
-
-        if self.track_type == "random_turns":
+        elif self.track_type == "random_turns":
             # Sequentially sample gate centers with bounded turn angle and keep within bounds.
             # Gate normal points along the local segment direction.
             pos = np.array([self.gate_spacing, 0.0, float(np.mean(self.gate_z_range))], dtype=np.float64)
@@ -457,6 +448,8 @@ class MujocoDroneHoopsEnv(gym.Env):
 
                 pos = candidate
                 self.gates.append(Gate(center=pos.copy(), normal=dir_vec.copy(), radius=self.gate_radius))
+        else:
+            raise ValueError(f"Unknown track_type: {self.track_type}. Expected 'straight' or 'random_turns'.")
 
         # (Optimization 2.2: Update gate cache after track is built)
         self._update_current_gate()
@@ -484,10 +477,8 @@ class MujocoDroneHoopsEnv(gym.Env):
     # Sensors
     # ---------------------------
     def _render_fpv_gray(self) -> np.ndarray:
-        # (Optimization 2.3: Only update scene if it has changed)
-        if self._scene_dirty:
-            self.renderer.update_scene(self.data, camera=self._fpv_cam_id)
-            self._scene_dirty = False
+        # Always update scene to ensure current state is rendered
+        self.renderer.update_scene(self.data, camera=self._fpv_cam_id)
         rgb = self.renderer.render()
         # High-contrast grayscale: use the red channel so the red gate is bright in obs.
         # (Luma-weighted grayscale makes red relatively dark.)
@@ -523,12 +514,6 @@ class MujocoDroneHoopsEnv(gym.Env):
             self._imu_buffer[idx] = it.payload
             self._imu_write_idx += 1
             self._imu_count += 1
-            # Also maintain old list for backward compatibility if needed
-            self._imu_history.append(it.payload)
-        # Keep enough history for the window, plus a little slack (old method for fallback)
-        max_keep = int(self.imu_window_n * 2)
-        if len(self._imu_history) > max_keep:
-            self._imu_history = self._imu_history[-max_keep:]
 
     def _compute_imu_sample(self) -> np.ndarray:
         # Drone pose/vel from freejoint (qpos: 7, qvel: 6).
@@ -654,8 +639,6 @@ class MujocoDroneHoopsEnv(gym.Env):
 
         mujoco.mj_step(self.model, self.data)
         self._t += self.dt_phys
-        # (Optimization 2.3: Mark scene as needing update after physics step)
-        self._scene_dirty = True
 
     # ---------------------------
     # Reward + termination
@@ -827,7 +810,6 @@ class MujocoDroneHoopsEnv(gym.Env):
 
         # Invalidate rotation matrix cache (Optimization 1.1)
         self._R_cache = None
-        self._R_prev_cache = None
         self._q_cache = None
 
         # Rebuild track each episode unless options specify fixed.
@@ -837,6 +819,8 @@ class MujocoDroneHoopsEnv(gym.Env):
         if not fixed:
             self._build_track()
         self._next_gate_idx = 0
+        # Update cached current gate after resetting gate index
+        self._update_current_gate()
         # mj_resetData restores mocap bodies to their XML defaults (gates are hidden at z=-100).
         # Sync gate visuals every reset so FPV images/videos actually show the hoops.
         self._sync_gate_sites()
@@ -847,7 +831,11 @@ class MujocoDroneHoopsEnv(gym.Env):
         self._cam_buf = TimedDeliveryBuffer()
         self._imu_buf = TimedDeliveryBuffer()
         self._last_image = np.zeros((self.image_size, self.image_size, 1), dtype=np.uint8)
-        self._imu_history = []
+
+        # Reset IMU circular buffer state (Optimization 2.1)
+        self._imu_write_idx = 0
+        self._imu_count = 0
+        self._imu_buffer.fill(0)
 
         self._act_queue = []
         self._applied_action = np.array([0.0, 0.0, 0.0, self._hover_thrust], dtype=np.float64)
@@ -915,10 +903,8 @@ class MujocoDroneHoopsEnv(gym.Env):
 
     def render(self):
         # Return current FPV RGB for debugging if needed.
-        # (Optimization 2.3: Only update scene if it has changed)
-        if self._scene_dirty:
-            self.renderer.update_scene(self.data, camera=self._fpv_cam_id)
-            self._scene_dirty = False
+        # Always update scene to ensure current state is rendered
+        self.renderer.update_scene(self.data, camera=self._fpv_cam_id)
         rgb = self.renderer.render()
         if self.image_rot90:
             rgb = np.rot90(rgb, k=self.image_rot90)
@@ -949,9 +935,8 @@ class MujocoDroneHoopsEnv(gym.Env):
                 evicted_renderer.close()
             r = mujoco.Renderer(self.model, height=h, width=w)
             self._extra_renderers[key] = r
-        # (Optimization 2.3: Only update scene if it has changed)
-        if self._scene_dirty:
-            r.update_scene(self.data, camera=self._fpv_cam_id)
+        # Always update the extra renderer's scene from current simulation data
+        r.update_scene(self.data, camera=self._fpv_cam_id)
         rgb = r.render()
         if self.image_rot90:
             rgb = np.rot90(rgb, k=self.image_rot90)

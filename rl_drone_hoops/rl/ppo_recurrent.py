@@ -40,9 +40,9 @@ class AsyncCheckpointSaver:
             max_queue_size: Maximum items in queue before blocking
         """
         self.queue: queue.Queue = queue.Queue(maxsize=max_queue_size)
+        self._stop_event = threading.Event()
         self.thread = threading.Thread(target=self._worker, daemon=True)
         self.thread.start()
-        self._stop_event = threading.Event()
 
     def _worker(self) -> None:
         """Background worker thread that processes save tasks."""
@@ -53,9 +53,39 @@ class AsyncCheckpointSaver:
                     # Sentinel value to stop
                     break
                 ckpt_dict, path = item
-                torch.save(ckpt_dict, path)
+                try:
+                    torch.save(ckpt_dict, path)
+                except Exception:
+                    logger.exception(f"Failed to save checkpoint to {path}")
+                    # Continue processing other saves even if one fails
             except queue.Empty:
                 continue
+
+    def _deep_copy_opt_state(self, opt_state: Dict[str, Any]) -> Dict[str, Any]:
+        """Deep copy optimizer state, moving tensors to CPU.
+        
+        Args:
+            opt_state: Optimizer state dict from opt.state_dict()
+            
+        Returns:
+            Deep copy with all tensors on CPU
+        """
+        result = {}
+        for key, value in opt_state.items():
+            if isinstance(value, torch.Tensor):
+                result[key] = value.detach().cpu().clone()
+            elif isinstance(value, dict):
+                result[key] = self._deep_copy_opt_state(value)
+            elif isinstance(value, (list, tuple)):
+                result[key] = type(value)(
+                    item.detach().cpu().clone() if isinstance(item, torch.Tensor)
+                    else self._deep_copy_opt_state(item) if isinstance(item, dict)
+                    else item
+                    for item in value
+                )
+            else:
+                result[key] = value
+        return result
 
     def save(self, ckpt_dict: Dict[str, Any], path: str) -> None:
         """Queue a checkpoint for async saving.
@@ -69,7 +99,7 @@ class AsyncCheckpointSaver:
             "global_step": ckpt_dict["global_step"],
             "global_flight": ckpt_dict["global_flight"],
             "model_state": {k: v.cpu().clone() for k, v in ckpt_dict["model_state"].items()},
-            "opt_state": ckpt_dict["opt_state"],  # Already on CPU typically
+            "opt_state": self._deep_copy_opt_state(ckpt_dict["opt_state"]),
             "cfg": ckpt_dict["cfg"],
         }
         self.queue.put((ckpt_copy, path))
@@ -426,12 +456,13 @@ def train_ppo_recurrent(
         base.update(applied)
         return base
 
-    while global_step < cfg.total_steps:
-        # Allow curriculum to affect only eval env kwargs (training envs remain as created).
-        # For full dynamic curriculum, we'd rebuild envs; keep it simple for now.
+    try:
+        while global_step < cfg.total_steps:
+            # Allow curriculum to affect only eval env kwargs (training envs remain as created).
+            # For full dynamic curriculum, we'd rebuild envs; keep it simple for now.
 
-        # Store initial hidden per rollout for recomputation.
-        h0 = h.detach()
+            # Store initial hidden per rollout for recomputation.
+            h0 = h.detach()
 
         for t in range(T):
             # Save obs. (Optimization 3.5: obs_buf already allocated after first reset)
@@ -621,7 +652,9 @@ def train_ppo_recurrent(
 
             next_eval += cfg.eval_every_steps
 
+    finally:
+        # (Optimization 4.1: Wait for pending async checkpoint saves)
+        ckpt_saver.shutdown()
+
     venv.close()
-    # (Optimization 4.1: Wait for pending async checkpoint saves)
-    ckpt_saver.shutdown()
     writer.close()
