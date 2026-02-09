@@ -1,11 +1,12 @@
-# RL Racing Drone Through Hoops (MuJoCo)
+# RL Racing Drone Through Hoops (MuJoCo + Isaac Gym)
 
 Primary docs:
 - Full system spec: `docs/SYSTEM.md`
 - Agent context (for new AI agents): `docs/AGENT_CONTEXT.md`
+- Isaac Gym rewrite guide: `docs/ISAAC_GYM_REWRITE.md`
 
 Initial scope:
-- Works in sim first (MuJoCo on Linux)
+- Works in sim first (MuJoCo on Linux, or Isaac Gym for GPU-accelerated training)
 - Sensors: 60 FPS grayscale camera at 96x96 (configurable) + IMU
 - Control: body rates + thrust
 
@@ -22,6 +23,17 @@ cd rl-drone-hoops
 pip install -r requirements-train.txt
 python3 scripts/train_recurrent_ppo.py --total-steps 200000 --num-envs 4
 ```
+
+Train with Isaac Gym (GPU-accelerated, 256 parallel environments):
+```bash
+cd rl-drone-hoops
+pip install -r requirements-train.txt
+# Requires Isaac Gym SDK: https://developer.nvidia.com/isaac-gym
+python3 scripts/train_recurrent_ppo.py --use-isaac --num-envs 256 --total-steps 200000
+```
+
+Note: The Isaac Gym environment falls back to CPU tensor-based physics when
+the Isaac Gym SDK is not installed. See `docs/ISAAC_GYM_REWRITE.md` for details.
 
 Videos:
 - Training eval videos are written to `./videos/` by default (relative to where you launch training).

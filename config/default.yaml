@@ -153,3 +153,15 @@ system:
   headless_gl: "auto"         # "auto" (detect), "egl", "osmesa", or "off"
   mujoco_threads: 1           # MuJoCo parallel threads per env
   pin_memory: true            # Pin PyTorch tensors to GPU memory
+
+# ============================================================================
+# Isaac Gym Settings (GPU-accelerated parallel simulation)
+# ============================================================================
+isaac:
+  enabled: false              # Use Isaac Gym instead of MuJoCo
+  num_envs: 256               # Number of parallel GPU environments
+  spacing: 10.0               # Spacing between environments (meters)
+  substeps: 2                 # Physics substeps per simulation step
+  use_gpu_pipeline: true      # Use GPU pipeline for tensor access
+  compute_device_id: 0        # CUDA device ID for compute
+  graphics_device_id: -1      # CUDA device ID for rendering (-1 = headless)
