@@ -1,5 +1,7 @@
+"""MuJoCo-based racing drone through hoops environment with realistic sensor/action latency."""
 from __future__ import annotations
 
+import logging
 import os
 
 # Headless default: if there's no DISPLAY and MUJOCO_GL isn't set, prefer EGL.
@@ -7,9 +9,28 @@ import os
 if "MUJOCO_GL" not in os.environ and "DISPLAY" not in os.environ:
     os.environ["MUJOCO_GL"] = "egl"
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, TypedDict
 
 import numpy as np
+
+from rl_drone_hoops.constants import (
+    ACTION_DIM,
+    DEFAULT_CAMERA_FPS,
+    DEFAULT_CONTROL_HZ,
+    DEFAULT_IMU_HZ,
+    DEFAULT_PHYSICS_HZ,
+    EPSILON,
+    MAX_CACHED_RENDERERS,
+    MAX_TILT_DEG,
+    MAX_REWARD_WEIGHT,
+    MIN_REWARD_WEIGHT,
+    XML_CAMERA_NAME,
+    XML_DRONE_BODY_NAME,
+    XML_GATE_BODY_PREFIX,
+    XML_GATE_SEG_PREFIX,
+)
+
+logger = logging.getLogger(__name__)
 
 try:
     import mujoco
@@ -25,25 +46,64 @@ from rl_drone_hoops.utils.timed_buffer import TimedDeliveryBuffer
 from rl_drone_hoops.mujoco_assets.xml_builder import build_drone_hoops_xml
 
 
+class ObservationDict(TypedDict):
+    """Observation structure for the environment."""
+
+    image: np.ndarray  # (H, W, 1) uint8 grayscale
+    imu: np.ndarray  # (T, 6) float32, columns are [gx, gy, gz, ax, ay, az] in body frame
+    last_action: np.ndarray  # (4,) float32, normalized action from previous step
+
+
 @dataclass
 class Gate:
+    """Gate (hoop) specification.
+
+    Attributes:
+        center: 3D position of gate center
+        normal: Unit normal vector pointing through the gate
+        radius: Gate radius (must be > 0)
+    """
+
     center: np.ndarray  # (3,)
     normal: np.ndarray  # (3,) unit
     radius: float
 
+    def __post_init__(self) -> None:
+        """Validate gate parameters."""
+        if self.radius <= 0:
+            raise ValueError(f"Gate radius must be positive, got {self.radius}")
+        if not (0.99 <= np.linalg.norm(self.normal) <= 1.01):
+            raise ValueError(f"Gate normal must be unit length, got norm {np.linalg.norm(self.normal)}")
+
 
 def _asset_path(rel: str) -> str:
+    """Get absolute path to an asset relative to this module."""
     here = os.path.dirname(__file__)
     return os.path.normpath(os.path.join(here, "..", "mujoco_assets", rel))
 
 
 class MujocoDroneHoopsEnv(gym.Env):
-    """
-    MuJoCo racing drone through hoops, sensor-only obs (camera + IMU) with latency.
+    """MuJoCo racing drone through hoops with realistic sensor/action latency.
+
+    Observations:
+        - Grayscale FPV camera (96x96)
+        - IMU (gyro + accel) window history
+        - Last normalized action
+
+    Actions:
+        - 4D normalized action: [roll_rate_cmd, pitch_rate_cmd, yaw_rate_cmd, thrust_cmd]
+        - All values in [-1, 1], scaled to physical limits
+
+    Rewards:
+        - +10 per gate passed
+        - +0.1 per timestep (survival bonus)
+        - Shaping: progress toward gate, centering, speed, smoothness, stability
+        - -20 on crash
 
     Notes:
-    - We apply forces/torques via mj_applyFT each physics step.
-    - Gates are treated as "pass-through" (visual sites) for MVP; collision can be added later.
+        - Forces/torques applied via mj_applyFT each physics step
+        - Realistic latencies: 30ms camera, 3ms IMU, 10ms actuator
+        - Thrust and angular rate limits to avoid instant flips
     """
 
     metadata = {"render_modes": ["rgb_array"], "render_fps": 60}
@@ -137,6 +197,9 @@ class MujocoDroneHoopsEnv(gym.Env):
         self.k_angrate = 0.0002  # penalize body angular rate magnitude
         self.r_crash = -20.0
 
+        # Validate reward weights
+        self._validate_reward_weights()
+
         # Observation: camera + IMU window + last action.
         # IMU window spans last 0.1s of delivered samples, padded if needed.
         self.imu_window_s = 0.10
@@ -165,12 +228,18 @@ class MujocoDroneHoopsEnv(gym.Env):
         self.data = mujoco.MjData(self.model)
 
         self.renderer = mujoco.Renderer(self.model, height=self.image_size, width=self.image_size)
-        # Optional renderers for higher-res debug/eval videos.
+        # Optional renderers for higher-res debug/eval videos (LRU cache to avoid VRAM leak).
         self._extra_renderers: Dict[Tuple[int, int], mujoco.Renderer] = {}
-        self._fpv_cam_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_CAMERA, "fpv")
 
-        # Drone body id for mj_applyFT.
-        self._drone_bid = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, "drone")
+        # Camera and drone body IDs (validate they exist)
+        self._fpv_cam_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_CAMERA, XML_CAMERA_NAME)
+        if self._fpv_cam_id < 0:
+            raise RuntimeError(f"Camera '{XML_CAMERA_NAME}' not found in MuJoCo model")
+
+        self._drone_bid = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, XML_DRONE_BODY_NAME)
+        if self._drone_bid < 0:
+            raise RuntimeError(f"Drone body '{XML_DRONE_BODY_NAME}' not found in MuJoCo model")
+
         self._drone_mass = float(self.model.body_mass[self._drone_bid])
         # Nominal hover thrust for warm-start at reset.
         self._hover_thrust = float(np.clip(self._drone_mass * 9.81, self.thrust_min, self.thrust_max))
@@ -183,15 +252,21 @@ class MujocoDroneHoopsEnv(gym.Env):
         self._gate_mocap_ids: list[int] = []
         self._gate_geom_ids: list[list[int]] = []
         for i in range(self._xml_max_gates):
-            bid = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, f"gate{i}")
+            gate_name = f"{XML_GATE_BODY_PREFIX}{i}"
+            bid = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, gate_name)
+            if bid < 0:
+                raise RuntimeError(f"Gate body '{gate_name}' not found in MuJoCo model")
             self._gate_body_ids.append(int(bid))
             mid = int(self.model.body_mocapid[bid])
             if mid < 0:
-                raise RuntimeError(f"gate{i} body is not mocap-enabled (body_mocapid={mid})")
+                raise RuntimeError(f"Gate body '{gate_name}' is not mocap-enabled (body_mocapid={mid})")
             self._gate_mocap_ids.append(mid)
             seg_ids: list[int] = []
             for j in range(self._xml_ring_segments):
-                gid = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, f"gate{i}_seg{j}")
+                seg_name = f"{gate_name}_{XML_GATE_SEG_PREFIX}{j}"
+                gid = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, seg_name)
+                if gid < 0:
+                    raise RuntimeError(f"Gate segment geom '{seg_name}' not found in MuJoCo model")
                 seg_ids.append(int(gid))
             self._gate_geom_ids.append(seg_ids)
 
@@ -223,6 +298,27 @@ class MujocoDroneHoopsEnv(gym.Env):
 
         self._build_track()
         self._sync_gate_sites()
+
+    # ---------------------------
+    # Validation
+    # ---------------------------
+    def _validate_reward_weights(self) -> None:
+        """Validate reward weights are within reasonable bounds."""
+        weights = {
+            "r_alive": self.r_alive,
+            "r_gate": self.r_gate,
+            "k_progress": self.k_progress,
+            "k_center": self.k_center,
+            "k_speed": self.k_speed,
+            "k_smooth": self.k_smooth,
+            "k_tilt": self.k_tilt,
+            "k_angrate": self.k_angrate,
+        }
+        for name, val in weights.items():
+            if not MIN_REWARD_WEIGHT <= val <= MAX_REWARD_WEIGHT:
+                raise ValueError(
+                    f"Reward weight '{name}' = {val} outside [{MIN_REWARD_WEIGHT}, {MAX_REWARD_WEIGHT}]"
+                )
 
     # ---------------------------
     # Track + visualization sites
@@ -356,7 +452,8 @@ class MujocoDroneHoopsEnv(gym.Env):
 
         return np.concatenate([w_body, a_body], axis=0).astype(np.float32)
 
-    def _obs(self) -> Dict[str, Any]:
+    def _obs(self) -> ObservationDict:
+        """Construct observation dict from current sensor state."""
         imu = np.zeros((self.imu_window_n, 6), dtype=np.float32)
         if self._imu_history:
             take = min(self.imu_window_n, len(self._imu_history))
@@ -450,18 +547,35 @@ class MujocoDroneHoopsEnv(gym.Env):
     # Reward + termination
     # ---------------------------
     def _gate_passed(self, gate: Gate, p_prev: np.ndarray, p_curr: np.ndarray) -> bool:
+        """Check if drone passed through gate between two positions.
+
+        Handles crossing in either direction (forward or backward).
+
+        Args:
+            gate: Gate to check crossing
+            p_prev: Previous position
+            p_curr: Current position
+
+        Returns:
+            True if drone crossed through the gate plane within gate.radius
+        """
         g = gate.center
         n = gate.normal
         s_prev = float(np.dot(n, p_prev - g))
         s_curr = float(np.dot(n, p_curr - g))
-        if not (s_prev < 0.0 and s_curr >= 0.0):
+
+        # Detect crossing in either direction
+        crossed = (s_prev < 0.0 and s_curr >= 0.0) or (s_prev >= 0.0 and s_curr < 0.0)
+        if not crossed:
             return False
+
         # Find crossing interpolation factor.
-        denom = (s_curr - s_prev)
-        if abs(denom) < 1e-9:
+        denom = s_curr - s_prev
+        if abs(denom) < EPSILON:
             return False
         t = -s_prev / denom
         t = float(np.clip(t, 0.0, 1.0))
+
         p_cross = p_prev + t * (p_curr - p_prev)
         # Radial distance from center in plane: remove normal component.
         d = p_cross - g
@@ -489,7 +603,7 @@ class MujocoDroneHoopsEnv(gym.Env):
             terminated = True
             info["crash"] = True
 
-        max_tilt = np.deg2rad(75.0)
+        max_tilt = np.deg2rad(MAX_TILT_DEG)
         if abs(float(rpy[0])) > max_tilt or abs(float(rpy[1])) > max_tilt:
             terminated = True
             info["crash"] = True
@@ -526,7 +640,8 @@ class MujocoDroneHoopsEnv(gym.Env):
             d = p - gate.center
             d_perp = d - np.dot(d, gate.normal) * gate.normal
             radial = float(np.linalg.norm(d_perp))
-            shaping += -self.k_center * (radial / max(gate.radius, 1e-6))
+            # Gate radius is validated to be > 0 in Gate.__post_init__, but use EPSILON as safeguard
+            shaping += -self.k_center * (radial / max(gate.radius, EPSILON))
 
             # Speed toward gate.
             to_gate = unit(gate.center - p)
@@ -570,6 +685,17 @@ class MujocoDroneHoopsEnv(gym.Env):
     # Gym API
     # ---------------------------
     def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None):
+        """Reset environment to initial state.
+
+        Args:
+            seed: Random seed for episode randomization
+            options: Dict with optional keys:
+                - fixed_track (bool): If True, reuse the same track (default False)
+
+        Returns:
+            observation: Initial observation (dict with keys image, imu, last_action)
+            info: Dict with next_gate_idx
+        """
         super().reset(seed=seed)
         if seed is not None:
             self.rng = np.random.default_rng(seed)
@@ -579,7 +705,9 @@ class MujocoDroneHoopsEnv(gym.Env):
         self._step_i = 0
 
         # Rebuild track each episode unless options specify fixed.
-        fixed = bool(options.get("fixed_track", False)) if options else False
+        if options is None:
+            options = {}
+        fixed = bool(options.get("fixed_track", False))
         if not fixed:
             self._build_track()
         self._next_gate_idx = 0
@@ -616,6 +744,22 @@ class MujocoDroneHoopsEnv(gym.Env):
         return obs, info
 
     def step(self, action: np.ndarray):
+        """Execute one control step in the environment.
+
+        Args:
+            action: 4D action array [roll_rate, pitch_rate, yaw_rate, thrust]
+                    values should be in [-1, 1]
+
+        Returns:
+            observation: Dict with keys image, imu, last_action
+            reward: Scalar reward
+            terminated: Boolean (episode ended due to termination condition)
+            truncated: Boolean (episode ended due to max steps)
+            info: Dict with diagnostic info
+        """
+        if action.shape != (ACTION_DIM,):
+            raise ValueError(f"Expected action shape ({ACTION_DIM},), got {action.shape}")
+
         a_norm = np.clip(action.astype(np.float32), -1.0, 1.0)
         a_prev = self._last_action_norm.copy()
 
@@ -650,14 +794,27 @@ class MujocoDroneHoopsEnv(gym.Env):
         return rgb
 
     def render_rgb(self, *, height: int, width: int) -> np.ndarray:
-        """
-        Render FPV RGB at an explicit resolution (used for high-res videos).
+        """Render FPV RGB at an explicit resolution (used for high-res videos).
+
+        Uses an LRU renderer cache to avoid VRAM exhaustion. Caches up to
+        MAX_CACHED_RENDERERS different resolutions.
+
+        Args:
+            height: Image height in pixels
+            width: Image width in pixels
+
+        Returns:
+            RGB image as (height, width, 3) uint8 array
         """
         h = int(height)
         w = int(width)
         key = (h, w)
         r = self._extra_renderers.get(key)
         if r is None:
+            # Evict oldest renderer if cache is full (simple LRU)
+            if len(self._extra_renderers) >= MAX_CACHED_RENDERERS:
+                oldest_key = next(iter(self._extra_renderers))
+                self._extra_renderers.pop(oldest_key)
             r = mujoco.Renderer(self.model, height=h, width=w)
             self._extra_renderers[key] = r
         r.update_scene(self.data, camera=self._fpv_cam_id)
@@ -678,13 +835,14 @@ class MujocoDroneHoopsEnv(gym.Env):
         return p, rpy
 
     def close(self):
+        """Clean up resources."""
         try:
             self.renderer.close()
-        except Exception:
-            pass
-        for r in list(self._extra_renderers.values()):
+        except Exception as e:
+            logger.warning(f"Error closing main renderer: {e}")
+        for key, r in list(self._extra_renderers.items()):
             try:
                 r.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Error closing renderer at {key}: {e}")
         self._extra_renderers = {}

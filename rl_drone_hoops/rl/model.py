@@ -1,3 +1,4 @@
+"""Neural network models for recurrent actor-critic policy."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -12,6 +13,17 @@ from rl_drone_hoops.rl.distributions import SquashedDiagGaussian
 
 
 class SmallCNN(nn.Module):
+    """Lightweight CNN for FPV image encoding.
+
+    Architecture:
+        Conv2d(1->32, k=8, s=4) -> ReLU
+        Conv2d(32->64, k=4, s=2) -> ReLU
+        Conv2d(64->64, k=3, s=1) -> ReLU
+        AdaptiveAvgPool2d -> Linear -> ReLU
+
+    Makes the encoder resolution-agnostic by pooling to a fixed spatial size.
+    """
+
     def __init__(self, in_ch: int = 1, feat_dim: int = 256, pool_hw: int = 7) -> None:
         super().__init__()
         self.conv = nn.Sequential(
@@ -27,7 +39,14 @@ class SmallCNN(nn.Module):
         self.fc = nn.Linear(64 * int(pool_hw) * int(pool_hw), feat_dim)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # x: (B,1,H,W) float32 in [0,1]
+        """Encode FPV image to feature vector.
+
+        Args:
+            x: Image tensor (B, 1, H, W) with values in [0, 1]
+
+        Returns:
+            Feature vector (B, feat_dim)
+        """
         z = self.conv(x)
         z = self.pool(z)
         z = z.flatten(1)
@@ -35,6 +54,11 @@ class SmallCNN(nn.Module):
 
 
 class IMUEncoder(nn.Module):
+    """MLP encoder for IMU sensor history.
+
+    Flattens and encodes a sequence of IMU readings (gyro + accel).
+    """
+
     def __init__(self, in_dim: int, feat_dim: int = 128) -> None:
         super().__init__()
         self.net = nn.Sequential(
@@ -58,6 +82,19 @@ class ActorCriticOutput:
 
 
 class RecurrentActorCritic(nn.Module):
+    """Recurrent actor-critic policy for drone control.
+
+    Architecture:
+        - Image encoder: CNN
+        - IMU encoder: MLP
+        - Fusion: Concatenate encodings with last action, then MLP
+        - Memory: GRU for temporal dependency
+        - Heads: Policy (tanh-squashed Gaussian) and value function
+
+    Attributes:
+        log_std: Learned action standard deviation
+    """
+
     def __init__(
         self,
         *,
@@ -69,6 +106,17 @@ class RecurrentActorCritic(nn.Module):
         fused_dim: int = 256,
         rnn_hidden: int = 256,
     ) -> None:
+        """Initialize the recurrent actor-critic model.
+
+        Args:
+            image_size: FPV image resolution (square)
+            imu_window_n: Number of IMU samples in history window
+            action_dim: Dimension of action space
+            cnn_dim: CNN feature dimension
+            imu_dim: IMU encoder feature dimension
+            fused_dim: Fused feature dimension before RNN
+            rnn_hidden: GRU hidden state dimension
+        """
         super().__init__()
         self.image_size = int(image_size)
         self.imu_window_n = int(imu_window_n)

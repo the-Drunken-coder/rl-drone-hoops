@@ -1,3 +1,4 @@
+"""Training script for recurrent PPO."""
 from __future__ import annotations
 
 import argparse
@@ -17,6 +18,7 @@ if "MUJOCO_GL" not in os.environ and "DISPLAY" not in os.environ:
     os.environ["MUJOCO_GL"] = "egl"
 
 from rl_drone_hoops.rl.ppo_recurrent import PPOConfig, train_ppo_recurrent  # noqa: E402
+from rl_drone_hoops.utils.checkpoint import latest_checkpoint_path  # noqa: E402
 
 
 _DEFAULTS = dict(
@@ -53,24 +55,12 @@ def _latest_run_dir(base_dir: str = "runs") -> str:
 
 
 def _latest_checkpoint(run_dir: str) -> str:
-    ckpt_dir = os.path.join(run_dir, "checkpoints")
-    if not os.path.isdir(ckpt_dir):
-        raise FileNotFoundError(f"'{ckpt_dir}' not found.")
-    best_step = -1
-    best_path = ""
-    for name in os.listdir(ckpt_dir):
-        if not (name.startswith("step") and name.endswith(".pt")):
-            continue
-        num = name[len("step") : -len(".pt")]
-        if not num.isdigit():
-            continue
-        step = int(num)
-        if step > best_step:
-            best_step = step
-            best_path = os.path.join(ckpt_dir, name)
-    if not best_path:
+    """Find latest checkpoint in run directory using shared utility."""
+    ckpt_path = latest_checkpoint_path(run_dir)
+    if ckpt_path is None:
+        ckpt_dir = os.path.join(run_dir, "checkpoints")
         raise FileNotFoundError(f"No checkpoints found under '{ckpt_dir}'.")
-    return best_path
+    return ckpt_path
 
 
 def main() -> int:

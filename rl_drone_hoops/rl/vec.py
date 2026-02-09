@@ -1,9 +1,13 @@
+"""Minimal in-process vector env for MuJoCo-based envs (not pickleable)."""
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -33,18 +37,34 @@ class InProcessVecEnv:
         return {k: np.stack(vs, axis=0) for k, vs in obs0.items()}
 
     def step(self, actions: np.ndarray) -> StepResult:
+        """Execute one step in all environments in parallel.
+
+        Args:
+            actions: Array of shape (num_envs, action_dim)
+
+        Returns:
+            StepResult with stacked observations, rewards, dones, and infos
+        """
         obs1: Dict[str, List[np.ndarray]] = {}
         rewards = np.zeros((self.num_envs,), dtype=np.float32)
         dones = np.zeros((self.num_envs,), dtype=np.bool_)
         infos: List[dict] = []
         for i, env in enumerate(self.envs):
-            obs, r, term, trunc, info = env.step(actions[i])
+            try:
+                obs, r, term, trunc, info = env.step(actions[i])
+            except Exception as e:
+                logger.error(f"Error in step for env {i}: {e}")
+                raise
             done = bool(term or trunc)
             rewards[i] = float(r)
             dones[i] = done
             infos.append(info)
             if done:
-                obs, _ = env.reset()
+                try:
+                    obs, _ = env.reset()
+                except Exception as e:
+                    logger.error(f"Error resetting env {i} after done: {e}")
+                    raise
             for k, v in obs.items():
                 obs1.setdefault(k, []).append(v)
         return StepResult(
@@ -55,9 +75,10 @@ class InProcessVecEnv:
         )
 
     def close(self) -> None:
-        for e in self.envs:
+        """Close all environments."""
+        for i, e in enumerate(self.envs):
             try:
                 e.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Error closing env {i}: {e}")
 

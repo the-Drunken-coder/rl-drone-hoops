@@ -1,5 +1,7 @@
+"""Recurrent PPO implementation for training the drone policy."""
 from __future__ import annotations
 
+import logging
 import os
 import time
 from dataclasses import dataclass
@@ -12,14 +14,51 @@ from torch import nn
 from torch.optim import Adam
 from torch.utils.tensorboard import SummaryWriter
 
+from rl_drone_hoops.constants import EPSILON, EPS_GRAD_UNDERFLOW
 from rl_drone_hoops.envs import MujocoDroneHoopsEnv
 from rl_drone_hoops.rl.distributions import SquashedDiagGaussian
 from rl_drone_hoops.rl.model import RecurrentActorCritic
 from rl_drone_hoops.rl.vec import InProcessVecEnv
+from rl_drone_hoops.utils.checkpoint import latest_checkpoint_path
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
 class PPOConfig:
+    """Configuration for recurrent PPO training.
+
+    Attributes:
+        run_dir: Directory to save checkpoints and logs
+        seed: Random seed for reproducibility
+        device: "auto", "cpu", or "cuda"
+        num_envs: Number of parallel environments
+        total_steps: Total training steps (in environment steps, not updates)
+        rollout_steps: Rollout length per PPO update
+        gamma: Discount factor
+        gae_lambda: GAE lambda for advantage estimation
+        clip_coef: PPO clipping coefficient
+        vf_coef: Value function loss weight
+        ent_coef: Entropy regularization weight
+        max_grad_norm: Gradient clipping norm
+        lr: Optimizer learning rate
+        update_epochs: Number of passes over rollout data
+        minibatch_envs: Number of environments per minibatch (preserves RNN sequences)
+        eval_every_steps: Evaluation frequency
+        eval_episodes: Number of episodes per evaluation
+        image_size: FPV camera resolution (square)
+        image_rot90: Rotate FPV image CCW by 90deg this many times
+        camera_fps: FPV camera sampling rate
+        imu_hz: IMU sampling rate
+        control_hz: Control loop rate
+        physics_hz: Physics simulation rate
+        track_type: "straight" or "random_turns"
+        gate_radius: Radius of gates in meters
+        turn_max_deg: Max turn angle in track generation
+        n_gates: Number of gates per episode
+        episode_s: Episode duration in seconds
+    """
+
     run_dir: str
     seed: int = 0
     device: str = "auto"
@@ -64,26 +103,6 @@ def _move_opt_state_to_device(opt: torch.optim.Optimizer, device: torch.device) 
         for k, v in list(st.items()):
             if torch.is_tensor(v):
                 st[k] = v.to(device=device)
-
-
-def _latest_checkpoint_path(run_dir: str) -> Optional[str]:
-    ckpt_dir = os.path.join(run_dir, "checkpoints")
-    if not os.path.isdir(ckpt_dir):
-        return None
-    best_step = -1
-    best_path: Optional[str] = None
-    for name in os.listdir(ckpt_dir):
-        if not (name.startswith("step") and name.endswith(".pt")):
-            continue
-        # step000123456.pt
-        num = name[len("step") : -len(".pt")]
-        if not num.isdigit():
-            continue
-        step = int(num)
-        if step > best_step:
-            best_step = step
-            best_path = os.path.join(ckpt_dir, name)
-    return best_path
 
 
 def _device(cfg: PPOConfig) -> torch.device:
@@ -429,12 +448,15 @@ def train_ppo_recurrent(
 
                 # Need u for log_prob; invert tanh approximately with atanh on clipped action.
                 a = act_mb
-                a_clip = torch.clamp(a, -1.0 + 1e-6, 1.0 - 1e-6)
+                a_clip = torch.clamp(a, -1.0 + EPSILON, 1.0 - EPSILON)
                 u = 0.5 * (torch.log1p(a_clip) - torch.log1p(-a_clip))  # atanh
                 logp = dist.log_prob(u, a)
                 ent = dist.entropy_approx()
 
-                ratio = torch.exp(logp - logp_old)
+                # Prevent numerical underflow in ratio computation
+                log_ratio = logp - logp_old
+                log_ratio = torch.clamp(log_ratio, -EPS_GRAD_UNDERFLOW, EPS_GRAD_UNDERFLOW)
+                ratio = torch.exp(log_ratio)
                 pg1 = adv_mb * ratio
                 pg2 = adv_mb * torch.clamp(ratio, 1.0 - cfg.clip_coef, 1.0 + cfg.clip_coef)
                 policy_loss = -torch.min(pg1, pg2).mean()

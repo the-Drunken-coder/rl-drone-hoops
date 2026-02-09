@@ -1,7 +1,7 @@
+"""XML builder for MuJoCo drone hoops simulation."""
 from __future__ import annotations
 
 import math
-from typing import Iterable
 
 
 def _ring_capsule_geoms_xml(

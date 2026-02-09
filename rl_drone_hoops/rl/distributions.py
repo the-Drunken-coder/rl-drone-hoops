@@ -1,3 +1,4 @@
+"""Probability distributions for policy output."""
 from __future__ import annotations
 
 import math
@@ -10,11 +11,17 @@ import torch.nn.functional as F
 
 @dataclass
 class SquashedDiagGaussian:
-    """
-    Tanh-squashed diagonal Gaussian distribution.
+    """Tanh-squashed diagonal Gaussian distribution.
 
     We represent the pre-squash action u ~ N(mean, std) and a = tanh(u).
-    Log-prob includes the change-of-variables correction.
+    Log-prob includes the change-of-variables correction from the tanh squashing.
+
+    The distribution is used for continuous action sampling with bounded support [-1, 1].
+
+    Attributes:
+        mean: Mean of the Gaussian in pre-squash space
+        log_std: Log standard deviation of the Gaussian
+        eps: Small epsilon for numerical stability
     """
 
     mean: torch.Tensor  # (..., A)

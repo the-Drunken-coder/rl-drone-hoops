@@ -13,6 +13,7 @@ htmlcov/
 .DS_Store
 .idea/
 .vscode/
+.claude/
 
 # Envs
 .venv/

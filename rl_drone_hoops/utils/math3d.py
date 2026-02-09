@@ -1,11 +1,17 @@
+"""3D math utilities for rotations and vectors."""
 from __future__ import annotations
 
 import numpy as np
 
 
 def quat_to_mat(q: np.ndarray) -> np.ndarray:
-    """
-    Convert MuJoCo quaternion (w, x, y, z) to 3x3 rotation matrix.
+    """Convert MuJoCo quaternion (w, x, y, z) to 3x3 rotation matrix.
+
+    Args:
+        q: Quaternion array (w, x, y, z)
+
+    Returns:
+        3x3 rotation matrix
     """
     w, x, y, z = q
     ww, xx, yy, zz = w * w, x * x, y * y, z * z
