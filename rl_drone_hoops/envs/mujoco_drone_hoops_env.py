@@ -58,18 +58,23 @@ class Gate:
         center: 3D position of gate center
         normal: Unit normal vector pointing through the gate
         radius: Gate radius (must be > 0)
+        radius_sq: Pre-computed radius squared (optimization 1.3)
     """
 
     center: np.ndarray  # (3,)
     normal: np.ndarray  # (3,) unit
     radius: float
+    radius_sq: float = 0.0  # Set in __post_init__
 
     def __post_init__(self) -> None:
         """Validate gate parameters."""
         if self.radius <= 0:
             raise ValueError(f"Gate radius must be positive, got {self.radius}")
-        if not (0.99 <= np.linalg.norm(self.normal) <= 1.01):
-            raise ValueError(f"Gate normal must be unit length, got norm {np.linalg.norm(self.normal)}")
+        norm_val = np.linalg.norm(self.normal)
+        if not (0.99 <= norm_val <= 1.01):
+            raise ValueError(f"Gate normal must be unit length, got norm {norm_val}")
+        # Pre-compute radius squared for optimization 1.3
+        self.radius_sq = self.radius * self.radius
 
 
 def _asset_path(rel: str) -> str:
@@ -274,6 +279,14 @@ class MujocoDroneHoopsEnv(gym.Env):
         self._imu_buf: TimedDeliveryBuffer[np.ndarray] = TimedDeliveryBuffer()
 
         self._last_image = np.zeros((self.image_size, self.image_size, 1), dtype=np.uint8)
+
+        # (Optimization 2.1: Circular buffer for IMU history instead of Python list)
+        # Allocate double-buffer capacity for wraparound efficiency
+        self._imu_buffer = np.zeros((self.imu_window_n * 2, 6), dtype=np.float32)
+        self._imu_write_idx = 0  # Current write position
+        self._imu_count = 0  # Total samples written (for wraparound handling)
+
+        # Keep old _imu_history for backward compatibility during transition
         self._imu_history: list[np.ndarray] = []
 
         # Action latency.
@@ -291,6 +304,34 @@ class MujocoDroneHoopsEnv(gym.Env):
 
         self._p_prev = np.zeros(3, dtype=np.float64)
         self._v_prev = np.zeros(3, dtype=np.float64)
+
+        # Rotation matrix caching (1.1: Cache Rotation Matrix Conversions)
+        self._R_cache: Optional[np.ndarray] = None
+        self._R_prev_cache: Optional[np.ndarray] = None
+        self._q_cache: Optional[np.ndarray] = None
+
+        # Pre-allocate working buffers (1.2: Eliminate Redundant Array Copies)
+        self._qpos_work = np.zeros(7, dtype=np.float64)
+        self._qvel_work = np.zeros(6, dtype=np.float64)
+        self._p_work = np.zeros(3, dtype=np.float64)
+        self._v_work = np.zeros(3, dtype=np.float64)
+        self._f_work = np.zeros(3, dtype=np.float64)
+        self._tau_work = np.zeros(3, dtype=np.float64)
+        self._d_work = np.zeros(3, dtype=np.float64)
+
+        # Pre-compute physics constants (3.2: Pre-compute Physics Constants)
+        self._thrust_alpha = self.dt_phys / max(self.thrust_tau, 1e-6)
+        self._thrust_alpha = np.clip(self._thrust_alpha, 0.0, 1.0)
+        self._gravity = np.array([0.0, 0.0, -9.81], dtype=np.float64)
+
+        # (Optimization 2.2: Cache current gate data)
+        self._current_gate_center: np.ndarray = np.zeros(3, dtype=np.float64)
+        self._current_gate_normal: np.ndarray = np.zeros(3, dtype=np.float64)
+        self._current_gate_radius: float = 0.0
+        self._current_gate_radius_sq: float = 0.0
+
+        # (Optimization 2.3: Track scene changes for renderer updates)
+        self._scene_dirty = True  # Start dirty to ensure first render updates scene
 
         self._build_track()
         self._sync_gate_sites()
@@ -315,6 +356,59 @@ class MujocoDroneHoopsEnv(gym.Env):
                 raise ValueError(
                     f"Reward weight '{name}' = {val} outside [{MIN_REWARD_WEIGHT}, {MAX_REWARD_WEIGHT}]"
                 )
+
+    # ---------------------------
+    # Optimization Helpers (Phase 1-3)
+    # ---------------------------
+    def _get_rotation_matrix(self, q: np.ndarray) -> np.ndarray:
+        """Get rotation matrix with caching to avoid redundant quat_to_mat calls.
+
+        (Optimization 1.1: Cache Rotation Matrix Conversions)
+
+        Args:
+            q: Quaternion (w,x,y,z)
+
+        Returns:
+            3x3 rotation matrix
+        """
+        # Check if cached quaternion matches (within epsilon)
+        if self._q_cache is not None and np.allclose(q, self._q_cache, atol=EPSILON):
+            return self._R_cache  # type: ignore
+
+        # Compute and cache
+        R = quat_to_mat(q)
+        self._R_cache = R
+        self._q_cache = q.copy()
+        return R
+
+    def _norm_sq(self, v: np.ndarray) -> float:
+        """Compute squared norm without sqrt (for distance comparisons).
+
+        (Optimization 1.3: Use Squared Norms for Distance Comparisons)
+
+        Args:
+            v: Vector
+
+        Returns:
+            Squared norm: sum(v*v)
+        """
+        return float(np.sum(v * v))
+
+    def _update_current_gate(self) -> None:
+        """Update cached current gate data.
+
+        (Optimization 2.2: Cache current gate data to avoid repeated lookups)
+        """
+        if self._next_gate_idx < len(self.gates):
+            gate = self.gates[self._next_gate_idx]
+            np.copyto(self._current_gate_center, gate.center)
+            np.copyto(self._current_gate_normal, gate.normal)
+            self._current_gate_radius = gate.radius
+            self._current_gate_radius_sq = gate.radius_sq
+        else:
+            # No active gate
+            self._current_gate_radius = 0.0
+            self._current_gate_radius_sq = 0.0
 
     # ---------------------------
     # Track + visualization sites
@@ -363,9 +457,9 @@ class MujocoDroneHoopsEnv(gym.Env):
 
                 pos = candidate
                 self.gates.append(Gate(center=pos.copy(), normal=dir_vec.copy(), radius=self.gate_radius))
-            return
 
-        raise ValueError(f"Unknown track_type={self.track_type!r}. Expected 'straight' or 'random_turns'.")
+        # (Optimization 2.2: Update gate cache after track is built)
+        self._update_current_gate()
 
     def _sync_gate_sites(self) -> None:
         # Place mocap gate bodies and update their alpha to highlight the next gate.
@@ -390,7 +484,10 @@ class MujocoDroneHoopsEnv(gym.Env):
     # Sensors
     # ---------------------------
     def _render_fpv_gray(self) -> np.ndarray:
-        self.renderer.update_scene(self.data, camera=self._fpv_cam_id)
+        # (Optimization 2.3: Only update scene if it has changed)
+        if self._scene_dirty:
+            self.renderer.update_scene(self.data, camera=self._fpv_cam_id)
+            self._scene_dirty = False
         rgb = self.renderer.render()
         # High-contrast grayscale: use the red channel so the red gate is bright in obs.
         # (Luma-weighted grayscale makes red relatively dark.)
@@ -419,21 +516,29 @@ class MujocoDroneHoopsEnv(gym.Env):
     def _deliver_sensors(self) -> None:
         for it in self._cam_buf.pop_ready(self._t):
             self._last_image = it.payload
+        # (Optimization 2.1: Use circular buffer for IMU history)
         for it in self._imu_buf.pop_ready(self._t):
+            # Write IMU sample to circular buffer
+            idx = self._imu_write_idx % (self.imu_window_n * 2)
+            self._imu_buffer[idx] = it.payload
+            self._imu_write_idx += 1
+            self._imu_count += 1
+            # Also maintain old list for backward compatibility if needed
             self._imu_history.append(it.payload)
-        # Keep enough history for the window, plus a little slack.
+        # Keep enough history for the window, plus a little slack (old method for fallback)
         max_keep = int(self.imu_window_n * 2)
         if len(self._imu_history) > max_keep:
             self._imu_history = self._imu_history[-max_keep:]
 
     def _compute_imu_sample(self) -> np.ndarray:
         # Drone pose/vel from freejoint (qpos: 7, qvel: 6).
-        qpos = self.data.qpos[:7].copy()
-        qvel = self.data.qvel[:6].copy()
+        # (Optimization 1.2: Use views instead of copies where possible)
+        qpos = self.data.qpos[:7]  # View, not copy
+        qvel = self.data.qvel[:6]  # View, not copy
 
         p = qpos[0:3]
         q = qpos[3:7]  # (w,x,y,z)
-        R = quat_to_mat(q)
+        R = self._get_rotation_matrix(q)  # (Optimization 1.1: Cache rotation matrix)
 
         v_world = qvel[0:3]
         w_world = qvel[3:6]
@@ -441,19 +546,30 @@ class MujocoDroneHoopsEnv(gym.Env):
 
         # Linear acceleration (finite-diff).
         a_world = (v_world - self._v_prev) / max(self.dt_phys, 1e-9)
-        self._v_prev = v_world.copy()
+        np.copyto(self._v_prev, v_world)  # Update cache without copy
 
-        g = np.array([0.0, 0.0, -9.81], dtype=np.float64)
-        a_body = R.T @ (a_world - g)
+        a_body = R.T @ (a_world - self._gravity)  # (Optimization 3.2: Use pre-computed gravity)
 
         return np.concatenate([w_body, a_body], axis=0).astype(np.float32)
 
     def _obs(self) -> ObservationDict:
         """Construct observation dict from current sensor state."""
+        # (Optimization 2.1: Use circular buffer for efficient IMU window extraction)
         imu = np.zeros((self.imu_window_n, 6), dtype=np.float32)
-        if self._imu_history:
-            take = min(self.imu_window_n, len(self._imu_history))
-            imu[-take:, :] = np.stack(self._imu_history[-take:], axis=0)
+        if self._imu_count > 0:
+            # Extract last N samples from circular buffer without copying entire list
+            take = min(self.imu_window_n, self._imu_count)
+            buffer_size = self.imu_window_n * 2
+
+            if self._imu_count < buffer_size:
+                # Haven't wrapped around yet, just take from the end
+                imu[-take:, :] = self._imu_buffer[self._imu_count - take:self._imu_count]
+            else:
+                # Wrapped around: take from _imu_write_idx backwards
+                for i in range(take):
+                    src_idx = (self._imu_write_idx - 1 - i) % buffer_size
+                    imu[self.imu_window_n - 1 - i] = self._imu_buffer[src_idx]
+
         return {
             "image": self._last_image.copy(),
             "imu": imu,
@@ -489,10 +605,11 @@ class MujocoDroneHoopsEnv(gym.Env):
         self.data.qfrc_applied[:] = 0.0
 
         # Read current state.
-        qpos = self.data.qpos[:7].copy()
-        qvel = self.data.qvel[:6].copy()
+        # (Optimization 1.2: Use views instead of copies)
+        qpos = self.data.qpos[:7]  # View, not copy
+        qvel = self.data.qvel[:6]  # View, not copy
         q = qpos[3:7]
-        R = quat_to_mat(q)
+        R = self._get_rotation_matrix(q)  # (Optimization 1.1: Cache rotation matrix)
         v_world = qvel[0:3]
         w_world = qvel[3:6]
         w_body = R.T @ w_world
@@ -501,10 +618,8 @@ class MujocoDroneHoopsEnv(gym.Env):
         w_cmd = self._applied_action[0:3]
         thrust_cmd = float(self._applied_action[3])
 
-        # Thrust lag.
-        alpha = self.dt_phys / max(self.thrust_tau, 1e-6)
-        alpha = np.clip(alpha, 0.0, 1.0)
-        self._thrust_state = (1.0 - alpha) * self._thrust_state + alpha * thrust_cmd
+        # Thrust lag. (Optimization 3.2: Use pre-computed alpha)
+        self._thrust_state = (1.0 - self._thrust_alpha) * self._thrust_state + self._thrust_alpha * thrust_cmd
 
         # Rate P control -> body torque, then map to world.
         w_err = w_cmd - w_body
@@ -525,7 +640,8 @@ class MujocoDroneHoopsEnv(gym.Env):
 
         # Apply at COM.
         # mujoco.mj_applyFT expects (3,1) float64 arrays and writes into qfrc_target.
-        point = self.data.xipos[self._drone_bid].copy()
+        # (Optimization 1.2: Avoid copy when possible)
+        point = self.data.xipos[self._drone_bid]  # Already a view, no copy needed
         mujoco.mj_applyFT(
             self.model,
             self.data,
@@ -538,6 +654,8 @@ class MujocoDroneHoopsEnv(gym.Env):
 
         mujoco.mj_step(self.model, self.data)
         self._t += self.dt_phys
+        # (Optimization 2.3: Mark scene as needing update after physics step)
+        self._scene_dirty = True
 
     # ---------------------------
     # Reward + termination
@@ -576,19 +694,21 @@ class MujocoDroneHoopsEnv(gym.Env):
         # Radial distance from center in plane: remove normal component.
         d = p_cross - g
         d_perp = d - np.dot(d, n) * n
-        return float(np.linalg.norm(d_perp)) <= gate.radius
+        # (Optimization 1.3: Use squared norm for radius comparison)
+        return self._norm_sq(d_perp) <= gate.radius_sq
 
     def _compute_reward_and_done(
         self, a_norm: np.ndarray, a_prev_norm: np.ndarray, p_prev: np.ndarray
     ) -> Tuple[float, bool, bool, Dict[str, Any]]:
         info: Dict[str, Any] = {}
 
-        qpos = self.data.qpos[:7].copy()
-        qvel = self.data.qvel[:6].copy()
+        # (Optimization 1.2: Use views instead of copies)
+        qpos = self.data.qpos[:7]  # View, not copy
+        qvel = self.data.qvel[:6]  # View, not copy
         p = qpos[0:3]
         v = qvel[0:3]
         q = qpos[3:7]
-        R = quat_to_mat(q)
+        R = self._get_rotation_matrix(q)  # (Optimization 1.1: Cache rotation matrix)
         rpy = mat_to_rpy(R)
 
         terminated = False
@@ -614,6 +734,8 @@ class MujocoDroneHoopsEnv(gym.Env):
             gate = self.gates[self._next_gate_idx]
             if self._gate_passed(gate, p_prev, p):
                 self._next_gate_idx += 1
+                # (Optimization 2.2: Update gate cache when gate changes)
+                self._update_current_gate()
                 gate_bonus = self.r_gate
                 passed = True
                 self._sync_gate_sites()
@@ -625,22 +747,24 @@ class MujocoDroneHoopsEnv(gym.Env):
             self._sync_gate_sites()
 
         # Shaping relative to next gate (if any).
+        # (Optimization 2.2: Use cached gate data instead of repeated lookups)
         shaping = 0.0
-        if self._next_gate_idx < len(self.gates):
-            gate = self.gates[self._next_gate_idx]
-            d_prev = float(np.linalg.norm(p_prev - gate.center))
-            d_curr = float(np.linalg.norm(p - gate.center))
+        if self._current_gate_radius > 0.0:
+            # (Optimization 1.3: Use squared norm to avoid sqrt where possible)
+            # For progress reward, we only care about relative distances, so compute actual norms
+            d_prev = float(np.linalg.norm(p_prev - self._current_gate_center))
+            d_curr = float(np.linalg.norm(p - self._current_gate_center))
             shaping += self.k_progress * (d_prev - d_curr)
 
             # Centering penalty based on distance to gate axis at current position.
-            d = p - gate.center
-            d_perp = d - np.dot(d, gate.normal) * gate.normal
+            d = p - self._current_gate_center
+            d_perp = d - np.dot(d, self._current_gate_normal) * self._current_gate_normal
             radial = float(np.linalg.norm(d_perp))
             # Gate radius is validated to be > 0 in Gate.__post_init__, but use EPSILON as safeguard
-            shaping += -self.k_center * (radial / max(gate.radius, EPSILON))
+            shaping += -self.k_center * (radial / max(self._current_gate_radius, EPSILON))
 
             # Speed toward gate.
-            to_gate = unit(gate.center - p)
+            to_gate = unit(self._current_gate_center - p)
             v_toward = float(np.dot(v, to_gate))
             shaping += self.k_speed * np.clip(v_toward, 0.0, 20.0)
 
@@ -652,7 +776,8 @@ class MujocoDroneHoopsEnv(gym.Env):
         tilt_pen = -self.k_tilt * (abs(float(rpy[0])) + abs(float(rpy[1])))
         w_world = qvel[3:6]
         w_body = R.T @ w_world
-        w2 = float(np.dot(w_body, w_body))
+        # (Optimization 1.3: Use squared norm to avoid sqrt)
+        w2 = self._norm_sq(w_body)
         ang_pen = -self.k_angrate * min(w2, 400.0)
 
         reward = self.r_alive + gate_bonus + shaping + smooth_pen + tilt_pen + ang_pen
@@ -700,6 +825,11 @@ class MujocoDroneHoopsEnv(gym.Env):
         self._t = 0.0
         self._step_i = 0
 
+        # Invalidate rotation matrix cache (Optimization 1.1)
+        self._R_cache = None
+        self._R_prev_cache = None
+        self._q_cache = None
+
         # Rebuild track each episode unless options specify fixed.
         if options is None:
             options = {}
@@ -725,9 +855,9 @@ class MujocoDroneHoopsEnv(gym.Env):
         self._last_action_norm = np.array([0.0, 0.0, 0.0, self._hover_thrust_norm], dtype=np.float32)
 
         # Initialize prev state.
-        qpos = self.data.qpos[:7].copy()
-        self._p_prev = qpos[0:3].copy()
-        self._v_prev = self.data.qvel[:3].copy()
+        # (Optimization 1.2: Use buffer-backed copies for efficiency)
+        np.copyto(self._p_prev, self.data.qpos[:3])
+        np.copyto(self._v_prev, self.data.qvel[:3])
 
         # Warm up sensors so we return a non-empty obs.
         for _ in range(int(self.physics_hz * 0.05)):  # 50 ms
@@ -757,14 +887,16 @@ class MujocoDroneHoopsEnv(gym.Env):
             raise ValueError(f"Expected action shape ({ACTION_DIM},), got {action.shape}")
 
         a_norm = np.clip(action.astype(np.float32), -1.0, 1.0)
-        a_prev = self._last_action_norm.copy()
+        a_prev = self._last_action_norm.copy()  # Keep this copy (needed for next step)
 
         # Queue scaled action with action latency.
         a_scaled = self._scale_action(a_norm)
         self._act_queue.append((self._t + self.act_latency_s, a_scaled))
 
         # Store p_prev for gate crossing and progress shaping.
-        p_prev = self.data.qpos[:3].copy()
+        # (Optimization 1.2: Copy only when we need to persist)
+        np.copyto(self._p_work, self.data.qpos[:3])
+        p_prev = self._p_work
 
         # Simulate for one control interval.
         n_phys = int(np.round(self.dt_control / self.dt_phys))
@@ -783,7 +915,10 @@ class MujocoDroneHoopsEnv(gym.Env):
 
     def render(self):
         # Return current FPV RGB for debugging if needed.
-        self.renderer.update_scene(self.data, camera=self._fpv_cam_id)
+        # (Optimization 2.3: Only update scene if it has changed)
+        if self._scene_dirty:
+            self.renderer.update_scene(self.data, camera=self._fpv_cam_id)
+            self._scene_dirty = False
         rgb = self.renderer.render()
         if self.image_rot90:
             rgb = np.rot90(rgb, k=self.image_rot90)
@@ -814,7 +949,9 @@ class MujocoDroneHoopsEnv(gym.Env):
                 evicted_renderer.close()
             r = mujoco.Renderer(self.model, height=h, width=w)
             self._extra_renderers[key] = r
-        r.update_scene(self.data, camera=self._fpv_cam_id)
+        # (Optimization 2.3: Only update scene if it has changed)
+        if self._scene_dirty:
+            r.update_scene(self.data, camera=self._fpv_cam_id)
         rgb = r.render()
         if self.image_rot90:
             rgb = np.rot90(rgb, k=self.image_rot90)
@@ -824,10 +961,10 @@ class MujocoDroneHoopsEnv(gym.Env):
         """
         Current drone position and roll/pitch/yaw (radians) in world frame.
         """
-        qpos = self.data.qpos[:7].copy()
-        p = qpos[0:3]
+        qpos = self.data.qpos[:7]  # View, not copy (Optimization 1.2)
+        p = qpos[0:3].copy()  # Return a copy for safety (user might mutate it)
         q = qpos[3:7]  # (w,x,y,z)
-        R = quat_to_mat(q)
+        R = self._get_rotation_matrix(q)  # (Optimization 1.1: Cache rotation matrix)
         rpy = mat_to_rpy(R)
         return p, rpy
 

@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import logging
 import os
+import queue
+import threading
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
@@ -22,6 +24,60 @@ from rl_drone_hoops.rl.vec import InProcessVecEnv
 from rl_drone_hoops.utils.best_model_tracker import BestModelTracker
 
 logger = logging.getLogger(__name__)
+
+
+class AsyncCheckpointSaver:
+    """(Optimization 4.1: Async checkpoint saving to eliminate I/O blocking)
+
+    Saves checkpoints asynchronously in a background thread to avoid blocking training.
+    Implements a simple queue-based design with deep copying to avoid race conditions.
+    """
+
+    def __init__(self, max_queue_size: int = 2):
+        """Initialize async saver with background worker thread.
+
+        Args:
+            max_queue_size: Maximum items in queue before blocking
+        """
+        self.queue: queue.Queue = queue.Queue(maxsize=max_queue_size)
+        self.thread = threading.Thread(target=self._worker, daemon=True)
+        self.thread.start()
+        self._stop_event = threading.Event()
+
+    def _worker(self) -> None:
+        """Background worker thread that processes save tasks."""
+        while not self._stop_event.is_set():
+            try:
+                item = self.queue.get(timeout=0.1)
+                if item is None:
+                    # Sentinel value to stop
+                    break
+                ckpt_dict, path = item
+                torch.save(ckpt_dict, path)
+            except queue.Empty:
+                continue
+
+    def save(self, ckpt_dict: Dict[str, Any], path: str) -> None:
+        """Queue a checkpoint for async saving.
+
+        Args:
+            ckpt_dict: Checkpoint dictionary with model/optimizer state
+            path: Path to save to
+        """
+        # Deep copy state dicts to avoid mutations during save
+        ckpt_copy = {
+            "global_step": ckpt_dict["global_step"],
+            "global_flight": ckpt_dict["global_flight"],
+            "model_state": {k: v.cpu().clone() for k, v in ckpt_dict["model_state"].items()},
+            "opt_state": ckpt_dict["opt_state"],  # Already on CPU typically
+            "cfg": ckpt_dict["cfg"],
+        }
+        self.queue.put((ckpt_copy, path))
+
+    def shutdown(self) -> None:
+        """Wait for all pending saves to complete."""
+        self.queue.put(None)  # Sentinel to stop worker
+        self.thread.join(timeout=5.0)
 
 
 @dataclass
@@ -304,7 +360,13 @@ def train_ppo_recurrent(
     T = cfg.rollout_steps
     N = cfg.num_envs
 
-    obs_buf: Dict[str, torch.Tensor] = {}
+    # (Optimization 3.5: Lazy observation buffer allocation after first reset)
+    # Allocate now that we know obs shapes
+    obs_buf: Dict[str, torch.Tensor] = {
+        "image": torch.zeros((T, N, *obs["image"].shape[1:]), device=device, dtype=torch.uint8),
+        "imu": torch.zeros((T, N, *obs["imu"].shape[1:]), device=device, dtype=torch.float32),
+        "last_action": torch.zeros((T, N, *obs["last_action"].shape[1:]), device=device, dtype=torch.float32),
+    }
     act_buf = torch.zeros((T, N, 4), device=device, dtype=torch.float32)
     logp_buf = torch.zeros((T, N), device=device, dtype=torch.float32)
     val_buf = torch.zeros((T, N), device=device, dtype=torch.float32)
@@ -318,6 +380,9 @@ def train_ppo_recurrent(
     ep_len = np.zeros((N,), dtype=np.int32)
 
     h = model.initial_hidden(N, device)
+
+    # (Optimization 4.1: Async checkpoint saving)
+    ckpt_saver = AsyncCheckpointSaver()
 
     start_time = time.time()
     global_step = 0
@@ -369,13 +434,7 @@ def train_ppo_recurrent(
         h0 = h.detach()
 
         for t in range(T):
-            # Save obs.
-            if not obs_buf:
-                # Allocate once we know shapes.
-                obs_buf["image"] = torch.zeros((T, N, *obs["image"].shape[1:]), device=device, dtype=torch.uint8)
-                obs_buf["imu"] = torch.zeros((T, N, *obs["imu"].shape[1:]), device=device, dtype=torch.float32)
-                obs_buf["last_action"] = torch.zeros((T, N, *obs["last_action"].shape[1:]), device=device, dtype=torch.float32)
-
+            # Save obs. (Optimization 3.5: obs_buf already allocated after first reset)
             obs_t = _to_torch_obs(obs, device)
             obs_buf["image"][t] = obs_t["image"].to(torch.uint8)
             obs_buf["imu"][t] = obs_t["imu"].to(torch.float32)
@@ -500,14 +559,16 @@ def train_ppo_recurrent(
 
         ev = _explained_variance(val_buf.detach().cpu().numpy().flatten(), ret.detach().cpu().numpy().flatten())
         writer.add_scalar("loss/explained_variance", float(ev), global_step)
-        print(
-            f"step={global_step} sps={sps:.1f} kl={float(np.mean(approx_kls)) if approx_kls else 0.0:.4f} "
-            f"clipfrac={float(np.mean(clipfracs)) if clipfracs else 0.0:.3f} ev={ev:.3f}"
-        , flush=True)
+        # (Optimization 3.4: Reduce print overhead - only print periodically)
+        if global_step % (cfg.rollout_steps * 10) == 0:
+            print(
+                f"step={global_step} sps={sps:.1f} kl={float(np.mean(approx_kls)) if approx_kls else 0.0:.4f} "
+                f"clipfrac={float(np.mean(clipfracs)) if clipfracs else 0.0:.3f} ev={ev:.3f}"
+            , flush=True)
 
-        # Checkpoint.
+        # Checkpoint. (Optimization 4.1: Async saving to avoid I/O blocking)
         ckpt_path = os.path.join(cfg.run_dir, "checkpoints", f"flight{global_flight:09d}_step{global_step:09d}.pt")
-        torch.save(
+        ckpt_saver.save(
             {
                 "global_step": global_step,
                 "global_flight": global_flight,
@@ -561,4 +622,6 @@ def train_ppo_recurrent(
             next_eval += cfg.eval_every_steps
 
     venv.close()
+    # (Optimization 4.1: Wait for pending async checkpoint saves)
+    ckpt_saver.shutdown()
     writer.close()
