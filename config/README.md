@@ -69,7 +69,7 @@ This allows you to:
 ### `ppo` - PPO Algorithm & Training
 - `seed`: Random seed
 - `device`: "auto", "cpu", or "cuda"
-- `num_envs`: Parallel environments
+- `num_envs`: Parallel environments (use `0` for auto: detect CPU cores)
 - `total_steps`: Total environment steps
 - `rollout_steps`: Steps per PPO update
 - `gamma`, `gae_lambda`, `clip_coef`, etc.: PPO hyperparameters

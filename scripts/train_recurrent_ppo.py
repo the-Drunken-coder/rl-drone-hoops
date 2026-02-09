@@ -15,7 +15,7 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 # Headless default.
-if "MUJOCO_GL" not in os.environ and "DISPLAY" not in os.environ:
+if sys.platform != "win32" and "MUJOCO_GL" not in os.environ and "DISPLAY" not in os.environ:
     os.environ["MUJOCO_GL"] = "egl"
 
 from rl_drone_hoops.config import load_config, extract_ppo_config, extract_curriculum  # noqa: E402
@@ -77,7 +77,7 @@ Examples:
     # PPO hyperparameters (override config file)
     ap.add_argument("--seed", type=int, default=None)
     ap.add_argument("--device", type=str, default=None, choices=["auto", "cpu", "cuda"])
-    ap.add_argument("--num-envs", type=int, default=None)
+    ap.add_argument("--num-envs", type=int, default=None, help="Number of parallel envs (0 = auto: use CPU cores)")
     ap.add_argument("--total-steps", type=int, default=None)
     ap.add_argument("--rollout-steps", type=int, default=None)
     ap.add_argument("--gamma", type=float, default=None, help="Discount factor")
@@ -88,6 +88,7 @@ Examples:
     ap.add_argument("--ent-coef", type=float, default=None, help="Entropy regularization weight")
     ap.add_argument("--max-grad-norm", type=float, default=None, help="Gradient clipping norm")
     ap.add_argument("--update-epochs", type=int, default=None, help="PPO update epochs per rollout")
+    ap.add_argument("--vec-mode", type=str, default=None, choices=["auto", "inproc", "subproc"], help="Vector env mode")
 
     # Environment parameters
     ap.add_argument("--image-size", type=int, default=None, help="FPV camera resolution (square)")
@@ -187,6 +188,7 @@ Examples:
         adam_eps=float(pick("adam_eps")),
         update_epochs=int(pick("update_epochs", "update-epochs")),
         minibatch_envs=int(pick("minibatch_envs")),
+        vec_mode=str(pick("vec_mode", "vec-mode")),
     )
 
     # Load curriculum from config

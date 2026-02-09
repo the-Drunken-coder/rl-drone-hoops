@@ -31,7 +31,7 @@ def main() -> None:
         sys.path.insert(0, _ROOT)
 
     # Headless default.
-    if "MUJOCO_GL" not in os.environ and "DISPLAY" not in os.environ:
+    if sys.platform != "win32" and "MUJOCO_GL" not in os.environ and "DISPLAY" not in os.environ:
         os.environ["MUJOCO_GL"] = "egl"
 
     ap = argparse.ArgumentParser()
