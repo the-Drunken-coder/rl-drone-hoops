@@ -158,6 +158,7 @@ def evaluate(
     episodes: int,
     run_dir: str,
     step: int,
+    flight: int = 0,
     env_kwargs: dict,
     record_video: bool = True,
 ) -> Dict[str, float]:
@@ -233,7 +234,7 @@ def evaluate(
         if record_video and ep == 0 and frames:
             os.makedirs(video_root, exist_ok=True)
             run_name = os.path.basename(os.path.normpath(run_dir))
-            path = os.path.join(video_root, f"eval_{run_name}_step{step:09d}.mp4")
+            path = os.path.join(video_root, f"eval_{run_name}_flight{flight:09d}_step{step:09d}.mp4")
             with imageio.get_writer(path, fps=video_fps, macro_block_size=1) as w:
                 for fr in frames:
                     w.append_data(fr)
@@ -320,6 +321,7 @@ def train_ppo_recurrent(
 
     start_time = time.time()
     global_step = 0
+    global_flight = 0  # Track number of completed episodes/flights
     next_eval = cfg.eval_every_steps
 
     if resume_from:
@@ -331,9 +333,10 @@ def train_ppo_recurrent(
         except Exception as e:
             raise RuntimeError(f"Failed to load checkpoint '{resume_from}': {e}") from e
         global_step = int(ckpt.get("global_step", global_step))
+        global_flight = int(ckpt.get("global_flight", global_flight))
         next_eval = ((global_step // cfg.eval_every_steps) + 1) * cfg.eval_every_steps
         writer.add_text("resume/from", str(resume_from))
-        print(f"resumed from {resume_from} at step={global_step}", flush=True)
+        print(f"resumed from {resume_from} at step={global_step} flight={global_flight}", flush=True)
 
     def current_env_kwargs() -> dict:
         base = dict(
@@ -408,9 +411,11 @@ def train_ppo_recurrent(
                     writer.add_scalar("train/ep_return", float(ep_ret[i]), global_step)
                     writer.add_scalar("train/ep_len", int(ep_len[i]), global_step)
                     writer.add_scalar("train/ep_gates", int(ep_gates[i]), global_step)
+                    writer.add_scalar("train/flight", global_flight, global_step)
                     ep_ret[i] = 0.0
                     ep_len[i] = 0
                     ep_gates[i] = 0
+                    global_flight += 1  # Increment flight counter
                 # Reset hidden for done envs (partial observability).
                 h[:, done, :] = 0.0
 
@@ -501,10 +506,11 @@ def train_ppo_recurrent(
         , flush=True)
 
         # Checkpoint.
-        ckpt_path = os.path.join(cfg.run_dir, "checkpoints", f"step{global_step:09d}.pt")
+        ckpt_path = os.path.join(cfg.run_dir, "checkpoints", f"flight{global_flight:09d}_step{global_step:09d}.pt")
         torch.save(
             {
                 "global_step": global_step,
+                "global_flight": global_flight,
                 "model_state": model.state_dict(),
                 "opt_state": opt.state_dict(),
                 "cfg": cfg.__dict__,
@@ -521,6 +527,7 @@ def train_ppo_recurrent(
                 episodes=cfg.eval_episodes,
                 run_dir=cfg.run_dir,
                 step=global_step,
+                flight=global_flight,
                 env_kwargs=current_env_kwargs(),
                 record_video=True,
             )
@@ -529,7 +536,7 @@ def train_ppo_recurrent(
             print("eval:", {k: round(v, 3) for k, v in eval_metrics.items()}, flush=True)
 
             # Check if this is the best model and save if so
-            latest_ckpt = os.path.join(cfg.run_dir, "checkpoints", f"step{global_step:09d}.pt")
+            latest_ckpt = os.path.join(cfg.run_dir, "checkpoints", f"flight{global_flight:09d}_step{global_step:09d}.pt")
             if os.path.exists(latest_ckpt):
                 # Pass current curriculum for difficulty tracking
                 curriculum_info = {
@@ -542,7 +549,7 @@ def train_ppo_recurrent(
                     eval_metrics,
                     latest_ckpt,
                     os.path.basename(os.path.normpath(cfg.run_dir)),
-                    global_step,
+                    global_flight,  # Use flight number instead of step
                     curriculum=curriculum_info,
                 )
 

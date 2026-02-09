@@ -1,8 +1,8 @@
 {
-  "best_return": -72.79648806103529,
+  "best_return": -59.35795983888304,
   "best_gates": 0.0,
   "best_success_rate": 0.0,
-  "checkpoint_path": "models\\best_model_step000020480.pt",
+  "checkpoint_path": "models\\best_model_step000175104.pt",
   "run_name": "ppo_rnn_20260208_234220",
-  "step": 20480
+  "step": 175104
 }

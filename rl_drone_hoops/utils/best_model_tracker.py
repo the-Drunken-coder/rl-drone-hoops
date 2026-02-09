@@ -44,6 +44,7 @@ class BestModelTracker:
             "best_success_rate": 0.0,
             "checkpoint_path": None,
             "run_name": None,
+            "flight": 0,
             "step": 0,
             "curriculum": {},  # Track curriculum params
         }
@@ -85,7 +86,7 @@ class BestModelTracker:
         eval_metrics: Dict[str, float],
         checkpoint_path: str | Path,
         run_name: str,
-        step: int,
+        flight: int,
         curriculum: Dict[str, Any] | None = None,
     ) -> bool:
         """Check if current checkpoint is better than best. If so, save it.
@@ -98,7 +99,7 @@ class BestModelTracker:
             eval_metrics: Dict with keys: eval/return_mean, eval/gates_mean, eval/finished_rate
             checkpoint_path: Path to current checkpoint file
             run_name: Name of current training run
-            step: Global training step
+            flight: Global flight/episode number
             curriculum: Dict with curriculum params (n_gates, gate_radius, track_type, turn_max_deg)
 
         Returns:
@@ -151,7 +152,7 @@ class BestModelTracker:
             return is_better and self._save_best_model(
                 checkpoint_path,
                 run_name,
-                step,
+                flight,
                 current_return,
                 current_gates,
                 current_success,
@@ -163,7 +164,7 @@ class BestModelTracker:
                 return self._save_best_model(
                     checkpoint_path,
                     run_name,
-                    step,
+                    flight,
                     current_return,
                     current_gates,
                     current_success,
@@ -176,7 +177,7 @@ class BestModelTracker:
         self,
         checkpoint_path: str | Path,
         run_name: str,
-        step: int,
+        flight: int,
         current_return: float,
         current_gates: float,
         current_success: float,
@@ -187,7 +188,7 @@ class BestModelTracker:
         Args:
             checkpoint_path: Source checkpoint path
             run_name: Name of training run
-            step: Global step
+            flight: Global flight/episode number
             current_return: Return value
             current_gates: Gates passed
             current_success: Success rate
@@ -212,8 +213,8 @@ class BestModelTracker:
                     except Exception as e:
                         logger.warning(f"Could not delete old best model: {e}")
 
-            # Save with run_name and step in filename
-            best_model_path = self.models_dir / f"best_model_step{step:09d}.pt"
+            # Save with run_name and flight in filename
+            best_model_path = self.models_dir / f"best_model_flight{flight:09d}.pt"
             shutil.copy2(checkpoint_path, best_model_path)
 
             # Update metadata
@@ -224,7 +225,7 @@ class BestModelTracker:
                     "best_success_rate": current_success,
                     "checkpoint_path": str(best_model_path),
                     "run_name": run_name,
-                    "step": step,
+                    "flight": flight,
                     "curriculum": curriculum or {},
                 }
             )
@@ -233,13 +234,14 @@ class BestModelTracker:
             logger.info(
                 f"New best model! gates={current_gates:.1f}, "
                 f"success={current_success:.1%}, return={current_return:.1f} "
-                f"at step {step} from run {run_name}"
+                f"at flight {flight} from run {run_name}"
             )
             print(
                 f"\n*** NEW BEST MODEL ***\n"
                 f"  Gates: {current_gates:.1f}\n"
                 f"  Success rate: {current_success:.1%}\n"
                 f"  Return: {current_return:.1f}\n"
+                f"  Flight: {flight}\n"
                 f"  Saved to: {best_model_path}\n",
                 flush=True,
             )
