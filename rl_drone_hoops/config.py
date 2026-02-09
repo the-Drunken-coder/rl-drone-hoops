@@ -138,6 +138,7 @@ def extract_ppo_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
         # PPO params
         "seed": ppo_cfg.get("seed", 0),
         "device": ppo_cfg.get("device", "auto"),
+        "use_mjx": ppo_cfg.get("use_mjx", False),
         "num_envs": ppo_cfg.get("num_envs", 4),
         "total_steps": ppo_cfg.get("total_steps", 200_000),
         "rollout_steps": ppo_cfg.get("rollout_steps", 128),

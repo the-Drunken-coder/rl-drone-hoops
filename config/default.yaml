@@ -7,6 +7,7 @@
 ppo:
   seed: 0
   device: "auto"  # "auto", "cpu", or "cuda"
+  use_mjx: false  # Set to true to use MJX (MuJoCo XLA) GPU-accelerated physics
 
   # Training loop
   num_envs: 4

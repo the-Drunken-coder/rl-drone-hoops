@@ -23,6 +23,13 @@ pip install -r requirements-train.txt
 python3 scripts/train_recurrent_ppo.py --total-steps 200000 --num-envs 4
 ```
 
+Train with MJX (GPU-accelerated batched physics, 10-20× faster):
+```bash
+pip install jax jaxlib mujoco-mjx  # or jax[cuda12] for GPU
+python3 scripts/train_recurrent_ppo.py --use-mjx --total-steps 200000 --num-envs 16
+```
+See `docs/MJX_MIGRATION.md` for architecture details and performance targets.
+
 Videos:
 - Training eval videos are written to `./videos/` by default (relative to where you launch training).
 - Override with `RL_DRONE_HOOPS_VIDEO_DIR=/abs/path/to/videos`.
