@@ -1,550 +1,132 @@
-step=512 sps=206.8 kl=0.0059 clipfrac=0.083 ev=0.001
-step=1024 sps=207.9 kl=0.0147 clipfrac=0.129 ev=0.007
-step=1536 sps=207.7 kl=0.0086 clipfrac=0.141 ev=0.009
-step=2048 sps=204.1 kl=0.0164 clipfrac=0.249 ev=-0.000
-step=2560 sps=203.7 kl=0.0079 clipfrac=0.109 ev=0.084
-step=3072 sps=203.3 kl=0.0205 clipfrac=0.209 ev=0.060
-step=3584 sps=201.3 kl=0.0149 clipfrac=0.229 ev=-0.021
-step=4096 sps=201.4 kl=0.0148 clipfrac=0.062 ev=-0.006
-step=4608 sps=198.5 kl=0.0064 clipfrac=0.203 ev=0.064
-step=5120 sps=199.1 kl=0.0078 clipfrac=0.189 ev=0.040
+step=512 sps=218.4 kl=0.0059 clipfrac=0.083 ev=0.001
+step=1024 sps=204.1 kl=0.0147 clipfrac=0.129 ev=0.007
+step=1536 sps=195.8 kl=0.0086 clipfrac=0.141 ev=0.009
+step=2048 sps=197.8 kl=0.0164 clipfrac=0.249 ev=-0.000
+step=2560 sps=199.2 kl=0.0079 clipfrac=0.109 ev=0.084
+step=3072 sps=200.4 kl=0.0205 clipfrac=0.209 ev=0.060
+step=3584 sps=199.4 kl=0.0149 clipfrac=0.229 ev=-0.021
+step=4096 sps=198.6 kl=0.0148 clipfrac=0.062 ev=-0.006
+step=4608 sps=198.9 kl=0.0064 clipfrac=0.203 ev=0.064
+step=5120 sps=199.8 kl=0.0078 clipfrac=0.189 ev=0.040
 Error closing main renderer: 'Renderer' object has no attribute 'close'
 Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
 eval: {'eval/return_mean': -83.766, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-
-*** NEW BEST MODEL ***
-  Gates: 0.0
-  Success rate: 0.0%
-  Return: -83.8
-  Saved to: models\best_model_step000005120.pt
-
-step=5632 sps=177.4 kl=0.0201 clipfrac=0.264 ev=0.047
-step=6144 sps=179.3 kl=0.0234 clipfrac=0.248 ev=0.031
-step=6656 sps=181.2 kl=0.0146 clipfrac=0.165 ev=0.037
-step=7168 sps=182.9 kl=0.0028 clipfrac=0.065 ev=0.059
-step=7680 sps=184.4 kl=0.0170 clipfrac=0.108 ev=0.055
-step=8192 sps=185.4 kl=0.0057 clipfrac=0.069 ev=0.036
-step=8704 sps=186.2 kl=0.0050 clipfrac=0.022 ev=0.039
-step=9216 sps=186.8 kl=0.0033 clipfrac=0.135 ev=0.036
-step=9728 sps=187.1 kl=-0.0006 clipfrac=0.000 ev=0.051
-step=10240 sps=186.6 kl=0.0037 clipfrac=0.030 ev=0.103
+step=5632 sps=178.4 kl=0.0201 clipfrac=0.264 ev=0.047
+step=6144 sps=181.0 kl=0.0234 clipfrac=0.248 ev=0.031
+step=6656 sps=182.3 kl=0.0146 clipfrac=0.165 ev=0.037
+step=7168 sps=183.6 kl=0.0028 clipfrac=0.065 ev=0.059
+step=7680 sps=183.7 kl=0.0170 clipfrac=0.108 ev=0.055
+step=8192 sps=185.0 kl=0.0057 clipfrac=0.069 ev=0.036
+step=8704 sps=186.1 kl=0.0050 clipfrac=0.022 ev=0.039
+step=9216 sps=187.0 kl=0.0033 clipfrac=0.135 ev=0.036
+step=9728 sps=187.6 kl=-0.0006 clipfrac=0.000 ev=0.051
+step=10240 sps=188.3 kl=0.0037 clipfrac=0.030 ev=0.103
 Error closing main renderer: 'Renderer' object has no attribute 'close'
 Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
 eval: {'eval/return_mean': -77.264, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-
-*** NEW BEST MODEL ***
-  Gates: 0.0
-  Success rate: 0.0%
-  Return: -77.3
-  Saved to: models\best_model_step000010240.pt
-
-step=10752 sps=175.4 kl=0.0029 clipfrac=0.062 ev=0.078
-step=11264 sps=174.3 kl=0.0031 clipfrac=0.015 ev=0.068
-step=11776 sps=173.7 kl=-0.0016 clipfrac=0.020 ev=0.073
-step=12288 sps=173.7 kl=-0.0012 clipfrac=0.079 ev=0.051
-step=12800 sps=173.7 kl=0.0033 clipfrac=0.049 ev=0.067
-step=13312 sps=173.5 kl=0.0035 clipfrac=0.021 ev=0.074
-step=13824 sps=173.7 kl=0.0038 clipfrac=0.021 ev=0.026
-step=14336 sps=173.9 kl=0.0023 clipfrac=0.030 ev=0.059
-step=14848 sps=174.1 kl=0.0024 clipfrac=0.017 ev=0.062
-step=15360 sps=174.2 kl=0.0004 clipfrac=0.002 ev=0.067
+step=10752 sps=180.8 kl=0.0029 clipfrac=0.062 ev=0.078
+step=11264 sps=181.5 kl=0.0031 clipfrac=0.015 ev=0.068
+step=11776 sps=182.8 kl=-0.0016 clipfrac=0.020 ev=0.073
+step=12288 sps=184.1 kl=-0.0012 clipfrac=0.079 ev=0.051
+step=12800 sps=184.9 kl=0.0033 clipfrac=0.049 ev=0.067
+step=13312 sps=185.4 kl=0.0035 clipfrac=0.021 ev=0.074
+step=13824 sps=186.3 kl=0.0038 clipfrac=0.021 ev=0.026
+step=14336 sps=186.8 kl=0.0023 clipfrac=0.030 ev=0.059
+step=14848 sps=187.3 kl=0.0024 clipfrac=0.017 ev=0.062
+step=15360 sps=187.6 kl=0.0004 clipfrac=0.002 ev=0.067
 Error closing main renderer: 'Renderer' object has no attribute 'close'
 Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
 eval: {'eval/return_mean': -100.279, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=15872 sps=167.8 kl=0.0018 clipfrac=0.015 ev=0.067
-step=16384 sps=168.3 kl=0.0009 clipfrac=0.047 ev=0.059
-step=16896 sps=168.7 kl=-0.0022 clipfrac=0.010 ev=0.098
-step=17408 sps=169.1 kl=0.0053 clipfrac=0.053 ev=0.111
-step=17920 sps=169.7 kl=-0.0015 clipfrac=0.017 ev=0.096
-step=18432 sps=170.0 kl=0.0023 clipfrac=0.000 ev=0.090
-step=18944 sps=170.2 kl=0.0039 clipfrac=0.032 ev=0.167
-step=19456 sps=170.5 kl=0.0019 clipfrac=0.013 ev=0.180
-step=19968 sps=170.9 kl=0.0018 clipfrac=0.027 ev=0.197
-step=20480 sps=171.3 kl=0.0055 clipfrac=0.030 ev=0.134
+step=15872 sps=180.6 kl=0.0018 clipfrac=0.015 ev=0.067
+step=16384 sps=181.3 kl=0.0009 clipfrac=0.047 ev=0.059
+step=16896 sps=182.0 kl=-0.0022 clipfrac=0.010 ev=0.098
+step=17408 sps=182.5 kl=0.0053 clipfrac=0.053 ev=0.111
+step=17920 sps=183.3 kl=-0.0015 clipfrac=0.017 ev=0.096
+step=18432 sps=183.9 kl=0.0023 clipfrac=0.000 ev=0.090
+step=18944 sps=184.3 kl=0.0039 clipfrac=0.032 ev=0.167
+step=19456 sps=184.6 kl=0.0019 clipfrac=0.013 ev=0.180
+step=19968 sps=185.1 kl=0.0018 clipfrac=0.027 ev=0.197
+step=20480 sps=185.6 kl=0.0055 clipfrac=0.030 ev=0.134
 Error closing main renderer: 'Renderer' object has no attribute 'close'
 Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
 eval: {'eval/return_mean': -72.796, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-
-*** NEW BEST MODEL ***
-  Gates: 0.0
-  Success rate: 0.0%
-  Return: -72.8
-  Saved to: models\best_model_step000020480.pt
-
-step=20992 sps=167.0 kl=0.0164 clipfrac=0.196 ev=0.200
-step=21504 sps=167.9 kl=0.0005 clipfrac=0.083 ev=0.181
-step=22016 sps=168.6 kl=0.0128 clipfrac=0.117 ev=0.155
-step=22528 sps=169.4 kl=0.0021 clipfrac=0.059 ev=0.152
-step=23040 sps=170.1 kl=0.0003 clipfrac=0.019 ev=0.219
-step=23552 sps=170.6 kl=0.0016 clipfrac=0.047 ev=0.218
-step=24064 sps=171.1 kl=0.0001 clipfrac=0.011 ev=0.238
-step=24576 sps=171.6 kl=0.0048 clipfrac=0.080 ev=0.225
-step=25088 sps=172.2 kl=0.0018 clipfrac=0.044 ev=0.276
+step=20992 sps=181.7 kl=0.0164 clipfrac=0.196 ev=0.200
+step=21504 sps=182.2 kl=0.0005 clipfrac=0.083 ev=0.181
+step=22016 sps=182.7 kl=0.0128 clipfrac=0.117 ev=0.155
+step=22528 sps=183.2 kl=0.0021 clipfrac=0.059 ev=0.152
+step=23040 sps=183.7 kl=0.0003 clipfrac=0.019 ev=0.219
+step=23552 sps=184.3 kl=0.0016 clipfrac=0.047 ev=0.218
+step=24064 sps=184.8 kl=0.0001 clipfrac=0.011 ev=0.238
+step=24576 sps=185.1 kl=0.0048 clipfrac=0.080 ev=0.225
+step=25088 sps=185.3 kl=0.0018 clipfrac=0.044 ev=0.276
 Error closing main renderer: 'Renderer' object has no attribute 'close'
 Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
 eval: {'eval/return_mean': -98.048, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=25600 sps=169.5 kl=0.0060 clipfrac=0.081 ev=0.291
-step=26112 sps=170.1 kl=0.0016 clipfrac=0.001 ev=0.259
-step=26624 sps=170.8 kl=0.0064 clipfrac=0.070 ev=0.336
-step=27136 sps=171.4 kl=0.0084 clipfrac=0.040 ev=0.417
-step=27648 sps=171.9 kl=0.0032 clipfrac=0.083 ev=0.372
-step=28160 sps=172.3 kl=-0.0000 clipfrac=0.023 ev=0.562
-step=28672 sps=172.6 kl=0.0034 clipfrac=0.006 ev=0.502
-step=29184 sps=173.0 kl=0.0071 clipfrac=0.028 ev=0.384
-step=29696 sps=173.3 kl=0.0033 clipfrac=0.074 ev=0.568
-step=30208 sps=173.7 kl=0.0024 clipfrac=0.042 ev=0.449
+step=25600 sps=182.1 kl=0.0060 clipfrac=0.081 ev=0.291
+step=26112 sps=182.5 kl=0.0016 clipfrac=0.001 ev=0.259
+step=26624 sps=182.7 kl=0.0064 clipfrac=0.070 ev=0.336
+step=27136 sps=183.0 kl=0.0084 clipfrac=0.040 ev=0.417
+step=27648 sps=183.4 kl=0.0032 clipfrac=0.083 ev=0.372
+step=28160 sps=183.7 kl=-0.0000 clipfrac=0.023 ev=0.562
+step=28672 sps=184.1 kl=0.0034 clipfrac=0.006 ev=0.502
+step=29184 sps=184.4 kl=0.0071 clipfrac=0.028 ev=0.384
+step=29696 sps=184.7 kl=0.0033 clipfrac=0.074 ev=0.568
+step=30208 sps=184.8 kl=0.0024 clipfrac=0.042 ev=0.449
 Error closing main renderer: 'Renderer' object has no attribute 'close'
 Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
 eval: {'eval/return_mean': -95.385, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=30720 sps=171.1 kl=0.0078 clipfrac=0.068 ev=0.487
-step=31232 sps=171.4 kl=0.0107 clipfrac=0.102 ev=0.536
-step=31744 sps=171.5 kl=0.0164 clipfrac=0.107 ev=0.653
-step=32256 sps=171.9 kl=0.0033 clipfrac=0.076 ev=0.591
-step=32768 sps=172.2 kl=0.0176 clipfrac=0.088 ev=0.645
-step=33280 sps=172.6 kl=0.0025 clipfrac=0.040 ev=0.592
-step=33792 sps=172.9 kl=0.0003 clipfrac=0.081 ev=0.604
-step=34304 sps=173.0 kl=0.0074 clipfrac=0.086 ev=0.548
-step=34816 sps=173.3 kl=0.0034 clipfrac=0.072 ev=0.554
-step=35328 sps=173.5 kl=0.0040 clipfrac=0.050 ev=0.527
+step=30720 sps=182.1 kl=0.0078 clipfrac=0.068 ev=0.487
+step=31232 sps=182.4 kl=0.0107 clipfrac=0.102 ev=0.536
+step=31744 sps=182.5 kl=0.0164 clipfrac=0.107 ev=0.653
+step=32256 sps=182.8 kl=0.0033 clipfrac=0.076 ev=0.591
+step=32768 sps=183.1 kl=0.0176 clipfrac=0.088 ev=0.645
+step=33280 sps=183.4 kl=0.0025 clipfrac=0.040 ev=0.592
+step=33792 sps=183.8 kl=0.0003 clipfrac=0.081 ev=0.604
+step=34304 sps=184.2 kl=0.0074 clipfrac=0.086 ev=0.548
+step=34816 sps=184.5 kl=0.0034 clipfrac=0.072 ev=0.554
+step=35328 sps=184.8 kl=0.0040 clipfrac=0.050 ev=0.527
 Error closing main renderer: 'Renderer' object has no attribute 'close'
 Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
 eval: {'eval/return_mean': -164.322, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=35840 sps=171.1 kl=0.0042 clipfrac=0.046 ev=0.390
-step=36352 sps=171.4 kl=-0.0005 clipfrac=0.002 ev=0.545
-step=36864 sps=171.7 kl=0.0020 clipfrac=0.023 ev=0.504
-step=37376 sps=172.2 kl=0.0065 clipfrac=0.065 ev=0.527
-step=37888 sps=172.8 kl=-0.0002 clipfrac=0.030 ev=0.386
-step=38400 sps=173.3 kl=0.0047 clipfrac=0.026 ev=0.595
-step=38912 sps=173.7 kl=0.0033 clipfrac=0.037 ev=0.546
-step=39424 sps=173.9 kl=-0.0013 clipfrac=0.009 ev=0.373
-step=39936 sps=174.0 kl=0.0032 clipfrac=0.124 ev=0.588
-step=40448 sps=173.8 kl=0.0031 clipfrac=0.015 ev=0.504
+step=35840 sps=181.9 kl=0.0042 clipfrac=0.046 ev=0.390
+step=36352 sps=181.9 kl=-0.0005 clipfrac=0.002 ev=0.545
+step=36864 sps=181.9 kl=0.0020 clipfrac=0.023 ev=0.504
+step=37376 sps=181.9 kl=0.0065 clipfrac=0.065 ev=0.527
+step=37888 sps=182.1 kl=-0.0002 clipfrac=0.030 ev=0.386
+step=38400 sps=182.3 kl=0.0047 clipfrac=0.026 ev=0.595
+step=38912 sps=182.6 kl=0.0033 clipfrac=0.037 ev=0.546
+step=39424 sps=183.0 kl=-0.0013 clipfrac=0.009 ev=0.373
+step=39936 sps=183.4 kl=0.0032 clipfrac=0.124 ev=0.588
+step=40448 sps=183.7 kl=0.0031 clipfrac=0.015 ev=0.504
 Error closing main renderer: 'Renderer' object has no attribute 'close'
 Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
 eval: {'eval/return_mean': -316.898, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=40960 sps=170.7 kl=0.0015 clipfrac=0.052 ev=0.436
-step=41472 sps=170.5 kl=0.0063 clipfrac=0.092 ev=0.735
-step=41984 sps=170.4 kl=-0.0025 clipfrac=0.018 ev=0.461
-step=42496 sps=170.3 kl=0.0085 clipfrac=0.036 ev=0.356
-step=43008 sps=170.5 kl=0.0019 clipfrac=0.011 ev=0.571
-step=43520 sps=170.6 kl=0.0122 clipfrac=0.087 ev=0.381
-step=44032 sps=170.7 kl=0.0024 clipfrac=0.002 ev=0.369
-step=44544 sps=170.9 kl=0.0012 clipfrac=0.082 ev=0.693
-step=45056 sps=171.0 kl=0.0032 clipfrac=0.105 ev=0.564
+step=40960 sps=181.0 kl=0.0015 clipfrac=0.052 ev=0.436
+step=41472 sps=181.2 kl=0.0063 clipfrac=0.092 ev=0.735
+step=41984 sps=181.5 kl=-0.0025 clipfrac=0.018 ev=0.461
+step=42496 sps=181.8 kl=0.0085 clipfrac=0.036 ev=0.356
+step=43008 sps=182.1 kl=0.0019 clipfrac=0.011 ev=0.571
+step=43520 sps=182.3 kl=0.0122 clipfrac=0.087 ev=0.381
+step=44032 sps=182.5 kl=0.0024 clipfrac=0.002 ev=0.369
+step=44544 sps=182.8 kl=0.0012 clipfrac=0.082 ev=0.693
+step=45056 sps=183.2 kl=0.0032 clipfrac=0.105 ev=0.564
 Error closing main renderer: 'Renderer' object has no attribute 'close'
 Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
 eval: {'eval/return_mean': -234.136, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=45568 sps=168.7 kl=-0.0012 clipfrac=0.042 ev=0.573
-step=46080 sps=168.9 kl=0.0024 clipfrac=0.021 ev=0.636
-step=46592 sps=169.1 kl=0.0125 clipfrac=0.095 ev=0.560
-step=47104 sps=169.2 kl=0.0056 clipfrac=0.021 ev=0.548
-step=47616 sps=169.5 kl=0.0086 clipfrac=0.061 ev=0.578
-step=48128 sps=169.7 kl=0.0020 clipfrac=0.047 ev=0.617
-step=48640 sps=169.8 kl=0.0009 clipfrac=0.014 ev=0.594
-step=49152 sps=169.9 kl=0.0004 clipfrac=0.008 ev=0.428
-step=49664 sps=170.2 kl=0.0026 clipfrac=0.067 ev=0.735
-step=50176 sps=170.4 kl=0.0022 clipfrac=0.002 ev=0.565
+step=45568 sps=181.0 kl=-0.0012 clipfrac=0.042 ev=0.573
+step=46080 sps=180.8 kl=0.0024 clipfrac=0.021 ev=0.636
+step=46592 sps=180.5 kl=0.0125 clipfrac=0.095 ev=0.560
+step=47104 sps=180.3 kl=0.0056 clipfrac=0.021 ev=0.548
+step=47616 sps=179.9 kl=0.0086 clipfrac=0.061 ev=0.578
+step=48128 sps=179.7 kl=0.0020 clipfrac=0.047 ev=0.617
+step=48640 sps=179.6 kl=0.0009 clipfrac=0.014 ev=0.594
+step=49152 sps=179.3 kl=0.0004 clipfrac=0.008 ev=0.428
+step=49664 sps=179.4 kl=0.0026 clipfrac=0.067 ev=0.735
+step=50176 sps=179.4 kl=0.0022 clipfrac=0.002 ev=0.565
 Error closing main renderer: 'Renderer' object has no attribute 'close'
 Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
 eval: {'eval/return_mean': -182.018, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=50688 sps=168.6 kl=-0.0020 clipfrac=0.019 ev=0.640
-step=51200 sps=168.8 kl=0.0086 clipfrac=0.074 ev=0.693
-step=51712 sps=169.0 kl=0.0006 clipfrac=0.049 ev=0.628
-step=52224 sps=169.3 kl=0.0075 clipfrac=0.015 ev=0.632
-step=52736 sps=169.5 kl=0.0014 clipfrac=0.030 ev=0.605
-step=53248 sps=169.7 kl=-0.0027 clipfrac=0.007 ev=0.625
-step=53760 sps=169.9 kl=0.0013 clipfrac=0.039 ev=0.608
-step=54272 sps=170.2 kl=0.0020 clipfrac=0.008 ev=0.665
-step=54784 sps=170.5 kl=0.0004 clipfrac=0.029 ev=0.665
-step=55296 sps=170.7 kl=0.0025 clipfrac=0.004 ev=0.751
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -116.011, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=55808 sps=168.8 kl=0.0084 clipfrac=0.057 ev=0.788
-step=56320 sps=168.6 kl=0.0028 clipfrac=0.090 ev=0.722
-step=56832 sps=168.6 kl=0.0100 clipfrac=0.097 ev=0.745
-step=57344 sps=168.6 kl=0.0094 clipfrac=0.125 ev=0.682
-step=57856 sps=168.5 kl=0.0020 clipfrac=0.042 ev=0.812
-step=58368 sps=168.5 kl=0.0042 clipfrac=0.063 ev=0.721
-step=58880 sps=168.4 kl=0.0004 clipfrac=0.067 ev=0.667
-step=59392 sps=168.3 kl=0.0107 clipfrac=0.083 ev=0.686
-step=59904 sps=168.3 kl=-0.0040 clipfrac=0.060 ev=0.774
-step=60416 sps=168.5 kl=0.0052 clipfrac=0.045 ev=0.651
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -179.714, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=60928 sps=167.5 kl=0.0057 clipfrac=0.073 ev=0.625
-step=61440 sps=167.7 kl=0.0026 clipfrac=0.034 ev=0.560
-step=61952 sps=167.9 kl=-0.0005 clipfrac=0.034 ev=0.608
-step=62464 sps=168.1 kl=0.0119 clipfrac=0.191 ev=0.505
-step=62976 sps=168.3 kl=0.0227 clipfrac=0.142 ev=0.624
-step=63488 sps=168.6 kl=0.0021 clipfrac=0.116 ev=0.555
-step=64000 sps=168.8 kl=0.0170 clipfrac=0.177 ev=0.778
-step=64512 sps=169.0 kl=0.0253 clipfrac=0.205 ev=0.793
-step=65024 sps=169.1 kl=0.0119 clipfrac=0.114 ev=0.690
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -241.765, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=65536 sps=168.0 kl=0.0003 clipfrac=0.024 ev=0.527
-step=66048 sps=168.3 kl=0.0310 clipfrac=0.186 ev=0.583
-step=66560 sps=168.5 kl=0.0081 clipfrac=0.068 ev=0.536
-step=67072 sps=168.8 kl=0.0120 clipfrac=0.184 ev=0.611
-step=67584 sps=169.2 kl=0.0085 clipfrac=0.126 ev=0.780
-step=68096 sps=169.5 kl=0.0193 clipfrac=0.140 ev=0.765
-step=68608 sps=169.8 kl=0.0139 clipfrac=0.132 ev=0.664
-step=69120 sps=170.1 kl=0.0057 clipfrac=0.036 ev=0.591
-step=69632 sps=170.3 kl=0.0132 clipfrac=0.165 ev=0.651
-step=70144 sps=170.5 kl=0.0039 clipfrac=0.111 ev=0.673
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -215.29, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=70656 sps=169.5 kl=0.0070 clipfrac=0.093 ev=0.608
-step=71168 sps=169.8 kl=0.0047 clipfrac=0.041 ev=0.682
-step=71680 sps=170.0 kl=0.0069 clipfrac=0.021 ev=0.682
-step=72192 sps=170.2 kl=0.0065 clipfrac=0.010 ev=0.661
-step=72704 sps=170.4 kl=0.0039 clipfrac=0.109 ev=0.602
-step=73216 sps=170.5 kl=-0.0004 clipfrac=0.034 ev=0.591
-step=73728 sps=171.2 kl=0.0028 clipfrac=0.033 ev=0.603
-step=74240 sps=171.2 kl=0.0018 clipfrac=0.016 ev=0.597
-step=74752 sps=171.3 kl=0.0020 clipfrac=0.004 ev=0.550
-step=75264 sps=171.2 kl=0.0073 clipfrac=0.051 ev=0.607
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -214.948, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=75776 sps=170.0 kl=0.0007 clipfrac=0.034 ev=0.690
-step=76288 sps=170.1 kl=0.0013 clipfrac=0.042 ev=0.634
-step=76800 sps=170.2 kl=-0.0004 clipfrac=0.004 ev=0.557
-step=77312 sps=170.4 kl=-0.0019 clipfrac=0.036 ev=0.586
-step=77824 sps=170.6 kl=0.0013 clipfrac=0.023 ev=0.541
-step=78336 sps=170.8 kl=0.0014 clipfrac=0.000 ev=0.615
-step=78848 sps=170.7 kl=0.0017 clipfrac=0.043 ev=0.695
-step=79360 sps=170.5 kl=0.0022 clipfrac=0.008 ev=0.530
-step=79872 sps=170.4 kl=-0.0013 clipfrac=0.028 ev=0.551
-step=80384 sps=170.3 kl=0.0007 clipfrac=0.002 ev=0.594
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -241.66, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=80896 sps=168.7 kl=-0.0002 clipfrac=0.001 ev=0.512
-step=81408 sps=168.6 kl=0.0101 clipfrac=0.092 ev=0.656
-step=81920 sps=168.7 kl=0.0028 clipfrac=0.020 ev=0.545
-step=82432 sps=168.9 kl=0.0003 clipfrac=0.044 ev=0.600
-step=82944 sps=168.9 kl=0.0023 clipfrac=0.032 ev=0.557
-step=83456 sps=169.0 kl=0.0063 clipfrac=0.022 ev=0.658
-step=83968 sps=169.0 kl=0.0010 clipfrac=0.079 ev=0.730
-step=84480 sps=169.0 kl=0.0052 clipfrac=0.114 ev=0.627
-step=84992 sps=169.0 kl=0.0028 clipfrac=0.027 ev=0.625
-step=85504 sps=169.1 kl=0.0043 clipfrac=0.025 ev=0.613
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -263.401, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=86016 sps=167.7 kl=0.0039 clipfrac=0.005 ev=0.551
-step=86528 sps=167.6 kl=0.0013 clipfrac=0.037 ev=0.781
-step=87040 sps=167.5 kl=0.0130 clipfrac=0.077 ev=0.711
-step=87552 sps=167.6 kl=0.0080 clipfrac=0.041 ev=0.653
-step=88064 sps=167.7 kl=0.0077 clipfrac=0.039 ev=0.687
-step=88576 sps=167.9 kl=0.0014 clipfrac=0.051 ev=0.590
-step=89088 sps=168.0 kl=0.0116 clipfrac=0.086 ev=0.569
-step=89600 sps=168.1 kl=0.0008 clipfrac=0.021 ev=0.712
-step=90112 sps=168.3 kl=0.0057 clipfrac=0.052 ev=0.640
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -206.61, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=90624 sps=167.5 kl=0.0104 clipfrac=0.066 ev=0.646
-step=91136 sps=167.8 kl=0.0035 clipfrac=0.030 ev=0.616
-step=91648 sps=168.0 kl=0.0062 clipfrac=0.085 ev=0.574
-step=92160 sps=168.2 kl=0.0014 clipfrac=0.115 ev=0.656
-step=92672 sps=168.5 kl=0.0082 clipfrac=0.055 ev=0.723
-step=93184 sps=168.7 kl=0.0586 clipfrac=0.351 ev=0.640
-step=93696 sps=168.9 kl=0.0281 clipfrac=0.221 ev=0.649
-step=94208 sps=169.1 kl=0.0050 clipfrac=0.079 ev=0.500
-step=94720 sps=169.3 kl=0.0084 clipfrac=0.079 ev=0.747
-step=95232 sps=169.5 kl=0.0083 clipfrac=0.059 ev=0.691
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -287.307, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=95744 sps=168.6 kl=0.0061 clipfrac=0.082 ev=0.603
-step=96256 sps=168.8 kl=0.0066 clipfrac=0.056 ev=0.579
-step=96768 sps=168.9 kl=0.0009 clipfrac=0.017 ev=0.564
-step=97280 sps=169.1 kl=-0.0007 clipfrac=0.038 ev=0.560
-step=97792 sps=169.3 kl=0.0021 clipfrac=0.047 ev=0.649
-step=98304 sps=169.4 kl=0.0082 clipfrac=0.046 ev=0.624
-step=98816 sps=169.5 kl=0.0013 clipfrac=0.013 ev=0.559
-step=99328 sps=169.6 kl=0.0041 clipfrac=0.069 ev=0.671
-step=99840 sps=169.7 kl=0.0029 clipfrac=0.050 ev=0.549
-step=100352 sps=169.8 kl=0.0051 clipfrac=0.067 ev=0.656
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -222.94, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=100864 sps=169.0 kl=0.0120 clipfrac=0.083 ev=0.658
-step=101376 sps=169.2 kl=0.0060 clipfrac=0.032 ev=0.754
-step=101888 sps=169.3 kl=0.0027 clipfrac=0.071 ev=0.748
-step=102400 sps=169.5 kl=0.0007 clipfrac=0.114 ev=0.835
-step=102912 sps=169.7 kl=0.0149 clipfrac=0.123 ev=0.758
-step=103424 sps=169.8 kl=-0.0024 clipfrac=0.095 ev=0.749
-step=103936 sps=170.0 kl=0.0051 clipfrac=0.038 ev=0.851
-step=104448 sps=169.9 kl=0.0345 clipfrac=0.200 ev=0.716
-step=104960 sps=169.8 kl=-0.0006 clipfrac=0.002 ev=0.656
-step=105472 sps=169.9 kl=0.0020 clipfrac=0.004 ev=0.687
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -247.338, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=105984 sps=169.2 kl=0.0027 clipfrac=0.000 ev=0.727
-step=106496 sps=169.2 kl=0.0006 clipfrac=0.025 ev=0.612
-step=107008 sps=169.1 kl=0.0019 clipfrac=0.003 ev=0.700
-step=107520 sps=169.0 kl=0.0006 clipfrac=0.016 ev=0.590
-step=108032 sps=169.1 kl=0.0040 clipfrac=0.055 ev=0.677
-step=108544 sps=169.2 kl=-0.0024 clipfrac=0.024 ev=0.808
-step=109056 sps=169.3 kl=0.0006 clipfrac=0.011 ev=0.802
-step=109568 sps=169.2 kl=0.0009 clipfrac=0.004 ev=0.826
-step=110080 sps=169.2 kl=0.0013 clipfrac=0.011 ev=0.797
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -194.423, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=110592 sps=168.6 kl=-0.0032 clipfrac=0.001 ev=0.782
-step=111104 sps=168.7 kl=0.0038 clipfrac=0.009 ev=0.709
-step=111616 sps=168.9 kl=-0.0008 clipfrac=0.021 ev=0.731
-step=112128 sps=169.0 kl=-0.0026 clipfrac=0.034 ev=0.870
-step=112640 sps=169.2 kl=0.0043 clipfrac=0.032 ev=0.880
-step=113152 sps=169.4 kl=0.0064 clipfrac=0.082 ev=0.886
-step=113664 sps=169.4 kl=-0.0021 clipfrac=0.024 ev=0.841
-step=114176 sps=169.4 kl=0.0041 clipfrac=0.046 ev=0.762
-step=114688 sps=169.5 kl=0.0049 clipfrac=0.042 ev=0.832
-step=115200 sps=169.6 kl=0.0062 clipfrac=0.078 ev=0.748
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -146.135, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=115712 sps=168.9 kl=0.0120 clipfrac=0.145 ev=0.801
-step=116224 sps=168.9 kl=0.0018 clipfrac=0.062 ev=0.884
-step=116736 sps=168.8 kl=0.0092 clipfrac=0.053 ev=0.910
-step=117248 sps=168.8 kl=0.0081 clipfrac=0.112 ev=0.838
-step=117760 sps=168.7 kl=0.0089 clipfrac=0.063 ev=0.847
-step=118272 sps=168.7 kl=0.0108 clipfrac=0.147 ev=0.895
-step=118784 sps=168.8 kl=0.0104 clipfrac=0.093 ev=0.925
-step=119296 sps=169.0 kl=0.0035 clipfrac=0.055 ev=0.934
-step=119808 sps=169.1 kl=0.0148 clipfrac=0.149 ev=0.936
-step=120320 sps=169.2 kl=0.0046 clipfrac=0.081 ev=0.939
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -148.915, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=120832 sps=168.7 kl=0.0061 clipfrac=0.058 ev=0.924
-step=121344 sps=168.8 kl=0.0058 clipfrac=0.139 ev=0.940
-step=121856 sps=169.0 kl=0.0185 clipfrac=0.139 ev=0.932
-step=122368 sps=169.1 kl=0.0054 clipfrac=0.032 ev=0.909
-step=122880 sps=169.2 kl=-0.0003 clipfrac=0.057 ev=0.908
-step=123392 sps=169.3 kl=0.0015 clipfrac=0.114 ev=0.951
-step=123904 sps=169.4 kl=0.0105 clipfrac=0.083 ev=0.915
-step=124416 sps=169.5 kl=0.0035 clipfrac=0.068 ev=0.851
-step=124928 sps=169.6 kl=0.0105 clipfrac=0.140 ev=0.821
-step=125440 sps=169.8 kl=0.0155 clipfrac=0.135 ev=0.831
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -90.627, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=125952 sps=169.4 kl=0.0019 clipfrac=0.102 ev=0.473
-step=126464 sps=169.5 kl=0.0023 clipfrac=0.056 ev=0.464
-step=126976 sps=169.7 kl=0.0125 clipfrac=0.078 ev=0.819
-step=127488 sps=169.8 kl=0.0089 clipfrac=0.129 ev=0.347
-step=128000 sps=169.9 kl=0.0060 clipfrac=0.113 ev=0.119
-step=128512 sps=170.1 kl=0.0283 clipfrac=0.192 ev=-1.262
-step=129024 sps=170.3 kl=0.0008 clipfrac=0.020 ev=-0.108
-step=129536 sps=170.4 kl=0.0077 clipfrac=0.089 ev=-0.120
-step=130048 sps=170.6 kl=0.0121 clipfrac=0.156 ev=0.124
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -86.288, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=130560 sps=170.2 kl=0.0151 clipfrac=0.207 ev=0.132
-step=131072 sps=170.3 kl=0.0059 clipfrac=0.046 ev=0.275
-step=131584 sps=170.4 kl=0.0086 clipfrac=0.097 ev=0.390
-step=132096 sps=170.5 kl=0.0124 clipfrac=0.104 ev=0.470
-step=132608 sps=170.7 kl=0.0010 clipfrac=0.108 ev=0.351
-step=133120 sps=170.6 kl=0.0055 clipfrac=0.032 ev=0.537
-step=133632 sps=170.6 kl=0.0010 clipfrac=0.072 ev=0.581
-step=134144 sps=170.5 kl=0.0160 clipfrac=0.126 ev=0.408
-step=134656 sps=170.4 kl=0.0077 clipfrac=0.117 ev=0.480
-step=135168 sps=170.4 kl=0.0108 clipfrac=0.115 ev=0.693
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -187.616, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=135680 sps=169.4 kl=0.0013 clipfrac=0.035 ev=0.740
-step=136192 sps=169.3 kl=0.0040 clipfrac=0.049 ev=0.681
-step=136704 sps=169.4 kl=0.0132 clipfrac=0.088 ev=0.692
-step=137216 sps=169.5 kl=0.0128 clipfrac=0.122 ev=0.885
-step=137728 sps=169.6 kl=0.0159 clipfrac=0.087 ev=0.788
-step=138240 sps=169.8 kl=0.0050 clipfrac=0.101 ev=0.765
-step=138752 sps=170.0 kl=0.0049 clipfrac=0.031 ev=0.731
-step=139264 sps=170.1 kl=0.0168 clipfrac=0.116 ev=0.791
-step=139776 sps=170.3 kl=0.0014 clipfrac=0.085 ev=0.866
-step=140288 sps=170.4 kl=0.0134 clipfrac=0.088 ev=0.737
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -109.908, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=140800 sps=170.0 kl=0.0061 clipfrac=0.045 ev=0.896
-step=141312 sps=170.1 kl=0.0010 clipfrac=0.081 ev=0.732
-step=141824 sps=170.2 kl=0.0155 clipfrac=0.141 ev=0.932
-step=142336 sps=170.3 kl=0.0009 clipfrac=0.068 ev=0.849
-step=142848 sps=170.4 kl=0.0089 clipfrac=0.037 ev=0.828
-step=143360 sps=170.4 kl=0.0027 clipfrac=0.068 ev=0.933
-step=143872 sps=170.4 kl=0.0139 clipfrac=0.189 ev=0.869
-step=144384 sps=170.6 kl=0.0082 clipfrac=0.093 ev=0.775
-step=144896 sps=170.7 kl=0.0136 clipfrac=0.127 ev=0.786
-step=145408 sps=170.8 kl=0.0007 clipfrac=0.028 ev=0.880
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -164.514, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=145920 sps=170.2 kl=0.0043 clipfrac=0.021 ev=0.865
-step=146432 sps=170.3 kl=0.0013 clipfrac=0.042 ev=0.626
-step=146944 sps=170.4 kl=0.0068 clipfrac=0.064 ev=0.327
-step=147456 sps=170.5 kl=0.0057 clipfrac=0.033 ev=0.794
-step=147968 sps=170.7 kl=0.0031 clipfrac=0.047 ev=0.738
-step=148480 sps=170.8 kl=-0.0003 clipfrac=0.017 ev=0.955
-step=148992 sps=170.9 kl=0.0033 clipfrac=0.038 ev=0.923
-step=149504 sps=171.1 kl=0.0035 clipfrac=0.042 ev=0.887
-step=150016 sps=171.2 kl=0.0019 clipfrac=0.030 ev=0.918
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -195.733, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=150528 sps=170.6 kl=0.0137 clipfrac=0.090 ev=0.933
-step=151040 sps=170.7 kl=0.0055 clipfrac=0.040 ev=0.940
-step=151552 sps=170.8 kl=0.0035 clipfrac=0.100 ev=0.924
-step=152064 sps=171.0 kl=0.0093 clipfrac=0.076 ev=0.787
-step=152576 sps=171.1 kl=-0.0075 clipfrac=0.069 ev=0.947
-step=153088 sps=171.2 kl=0.0025 clipfrac=0.072 ev=0.842
-step=153600 sps=171.3 kl=0.0061 clipfrac=0.030 ev=0.887
-step=154112 sps=171.5 kl=0.0072 clipfrac=0.057 ev=0.684
-step=154624 sps=171.6 kl=0.0169 clipfrac=0.140 ev=0.921
-step=155136 sps=171.7 kl=0.0016 clipfrac=0.076 ev=0.940
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -92.688, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=155648 sps=171.0 kl=0.0069 clipfrac=0.130 ev=0.935
-step=156160 sps=171.1 kl=0.0022 clipfrac=0.052 ev=0.944
-step=156672 sps=171.2 kl=0.0052 clipfrac=0.030 ev=0.929
-step=157184 sps=171.3 kl=0.0158 clipfrac=0.208 ev=0.972
-step=157696 sps=171.5 kl=0.0189 clipfrac=0.130 ev=0.734
-step=158208 sps=171.6 kl=0.0096 clipfrac=0.074 ev=0.900
-step=158720 sps=171.7 kl=-0.0008 clipfrac=0.013 ev=0.941
-step=159232 sps=171.8 kl=0.0141 clipfrac=0.110 ev=0.596
-step=159744 sps=171.9 kl=0.0029 clipfrac=0.016 ev=0.942
-step=160256 sps=172.1 kl=0.0064 clipfrac=0.136 ev=0.878
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -239.587, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=160768 sps=171.4 kl=0.0035 clipfrac=0.017 ev=0.843
-step=161280 sps=171.5 kl=0.0165 clipfrac=0.144 ev=0.950
-step=161792 sps=171.6 kl=0.0120 clipfrac=0.067 ev=0.753
-step=162304 sps=171.7 kl=0.0087 clipfrac=0.087 ev=0.907
-step=162816 sps=171.8 kl=0.0002 clipfrac=0.092 ev=0.646
-step=163328 sps=171.9 kl=0.0122 clipfrac=0.083 ev=0.902
-step=163840 sps=172.1 kl=0.0170 clipfrac=0.135 ev=0.927
-step=164352 sps=172.1 kl=-0.0005 clipfrac=0.016 ev=0.908
-step=164864 sps=172.2 kl=0.0057 clipfrac=0.104 ev=0.923
-step=165376 sps=172.4 kl=0.0091 clipfrac=0.067 ev=0.965
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -75.26, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=165888 sps=171.9 kl=0.0003 clipfrac=0.057 ev=0.882
-step=166400 sps=172.0 kl=0.0077 clipfrac=0.025 ev=0.943
-step=166912 sps=172.2 kl=0.0064 clipfrac=0.083 ev=0.930
-step=167424 sps=172.2 kl=0.0016 clipfrac=0.051 ev=0.901
-step=167936 sps=172.3 kl=0.0041 clipfrac=0.018 ev=0.903
-step=168448 sps=172.4 kl=0.0102 clipfrac=0.101 ev=0.891
-step=168960 sps=172.4 kl=0.0064 clipfrac=0.021 ev=0.891
-step=169472 sps=172.5 kl=0.0149 clipfrac=0.242 ev=0.912
-step=169984 sps=172.5 kl=0.0068 clipfrac=0.083 ev=0.666
-step=170496 sps=172.5 kl=0.0072 clipfrac=0.047 ev=0.881
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -71.764, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-
-*** NEW BEST MODEL ***
-  Gates: 0.0
-  Success rate: 0.0%
-  Return: -71.8
-  Saved to: models\best_model_step000170496.pt
-
-step=171008 sps=171.9 kl=0.0048 clipfrac=0.041 ev=0.884
-step=171520 sps=171.9 kl=0.0072 clipfrac=0.040 ev=0.551
-step=172032 sps=171.9 kl=0.0075 clipfrac=0.114 ev=0.777
-step=172544 sps=171.9 kl=0.0158 clipfrac=0.168 ev=0.657
-step=173056 sps=171.9 kl=0.0042 clipfrac=0.043 ev=0.639
-step=173568 sps=171.8 kl=0.0049 clipfrac=0.123 ev=0.915
-step=174080 sps=171.8 kl=0.0029 clipfrac=0.051 ev=0.876
-step=174592 sps=171.8 kl=0.0039 clipfrac=0.054 ev=0.911
-step=175104 sps=171.8 kl=0.0054 clipfrac=0.138 ev=0.949
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -59.358, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-
-*** NEW BEST MODEL ***
-  Gates: 0.0
-  Success rate: 0.0%
-  Return: -59.4
-  Saved to: models\best_model_step000175104.pt
-
-step=175616 sps=171.4 kl=0.0022 clipfrac=0.017 ev=0.921
-step=176128 sps=171.4 kl=0.0049 clipfrac=0.040 ev=0.881
-step=176640 sps=171.3 kl=0.0055 clipfrac=0.104 ev=0.928
-step=177152 sps=171.3 kl=0.0114 clipfrac=0.067 ev=0.945
-step=177664 sps=171.3 kl=0.0058 clipfrac=0.115 ev=0.957
-step=178176 sps=171.3 kl=0.0031 clipfrac=0.024 ev=0.941
-step=178688 sps=171.2 kl=0.0250 clipfrac=0.244 ev=0.656
-step=179200 sps=171.2 kl=0.0011 clipfrac=0.017 ev=0.619
-step=179712 sps=171.2 kl=0.0073 clipfrac=0.129 ev=0.823
-step=180224 sps=171.1 kl=0.0053 clipfrac=0.055 ev=0.713
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -229.795, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=180736 sps=169.8 kl=0.0022 clipfrac=0.024 ev=0.917
-step=181248 sps=169.8 kl=0.0003 clipfrac=0.070 ev=0.814
-step=181760 sps=169.7 kl=0.0158 clipfrac=0.075 ev=0.848
-step=182272 sps=169.7 kl=0.0100 clipfrac=0.121 ev=0.809
-step=182784 sps=169.6 kl=0.0146 clipfrac=0.073 ev=0.883
-step=183296 sps=169.5 kl=0.0063 clipfrac=0.114 ev=0.953
-step=183808 sps=169.5 kl=0.0083 clipfrac=0.160 ev=0.479
-step=184320 sps=169.5 kl=0.0044 clipfrac=0.075 ev=-0.383
-step=184832 sps=169.5 kl=0.0028 clipfrac=0.044 ev=0.939
-step=185344 sps=169.4 kl=0.0010 clipfrac=0.114 ev=0.906
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -150.359, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=185856 sps=168.7 kl=0.0054 clipfrac=0.050 ev=0.945
-step=186368 sps=168.8 kl=0.0161 clipfrac=0.138 ev=0.939
-step=186880 sps=168.9 kl=0.0125 clipfrac=0.129 ev=0.872
-step=187392 sps=169.0 kl=0.0041 clipfrac=0.115 ev=0.863
-step=187904 sps=169.1 kl=0.0021 clipfrac=0.092 ev=0.920
-step=188416 sps=169.2 kl=0.0066 clipfrac=0.066 ev=0.940
-step=188928 sps=169.3 kl=0.0013 clipfrac=0.043 ev=0.910
-step=189440 sps=169.4 kl=0.0155 clipfrac=0.094 ev=0.954
-step=189952 sps=169.5 kl=0.0088 clipfrac=0.084 ev=0.921
-step=190464 sps=169.6 kl=0.0057 clipfrac=0.057 ev=0.954
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -89.254, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=190976 sps=169.3 kl=0.0070 clipfrac=0.154 ev=0.920
-step=191488 sps=169.3 kl=0.0102 clipfrac=0.106 ev=0.934
-step=192000 sps=169.4 kl=0.0248 clipfrac=0.171 ev=0.843
-step=192512 sps=169.4 kl=0.0122 clipfrac=0.116 ev=0.959
-step=193024 sps=169.5 kl=0.0066 clipfrac=0.042 ev=0.927
-step=193536 sps=169.5 kl=0.0088 clipfrac=0.065 ev=0.928
-step=194048 sps=169.6 kl=0.0053 clipfrac=0.062 ev=0.886
-step=194560 sps=169.7 kl=0.0034 clipfrac=0.064 ev=0.954
-step=195072 sps=169.8 kl=0.0094 clipfrac=0.116 ev=0.920
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -68.454, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-step=195584 sps=169.5 kl=0.0032 clipfrac=0.017 ev=0.910
-step=196096 sps=169.5 kl=0.0074 clipfrac=0.062 ev=0.890
-step=196608 sps=169.6 kl=0.0037 clipfrac=0.092 ev=0.956
-step=197120 sps=169.6 kl=0.0001 clipfrac=0.062 ev=0.969
-step=197632 sps=169.7 kl=0.0099 clipfrac=0.150 ev=0.954
-step=198144 sps=169.7 kl=0.0074 clipfrac=0.073 ev=0.906
-step=198656 sps=169.8 kl=0.0074 clipfrac=0.061 ev=0.970
-step=199168 sps=169.9 kl=0.0063 clipfrac=0.136 ev=0.965
-step=199680 sps=169.9 kl=0.0077 clipfrac=0.100 ev=0.965
-step=200192 sps=169.9 kl=0.0057 clipfrac=0.054 ev=0.926
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing renderer at (256, 256): 'Renderer' object has no attribute 'close'
-eval: {'eval/return_mean': -112.126, 'eval/return_std': 0.0, 'eval/gates_mean': 0.0, 'eval/finished_rate': 0.0}
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing main renderer: 'Renderer' object has no attribute 'close'
-Error closing main renderer: 'Renderer' object has no attribute 'close'
+step=50688 sps=177.3 kl=-0.0020 clipfrac=0.019 ev=0.640
+step=51200 sps=177.4 kl=0.0086 clipfrac=0.074 ev=0.693
+step=51712 sps=177.3 kl=0.0006 clipfrac=0.049 ev=0.628
+step=52224 sps=177.3 kl=0.0075 clipfrac=0.015 ev=0.632

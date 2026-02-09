@@ -1,8 +1,10 @@
 {
-  "best_return": -59.35795983888304,
+  "best_return": -999999.0,
   "best_gates": 0.0,
   "best_success_rate": 0.0,
-  "checkpoint_path": "models\\best_model_step000175104.pt",
-  "run_name": "ppo_rnn_20260208_234220",
-  "step": 175104
+  "checkpoint_path": null,
+  "run_name": null,
+  "flight": 0,
+  "step": 0,
+  "curriculum": {}
 }

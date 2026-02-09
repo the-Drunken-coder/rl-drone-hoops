@@ -536,8 +536,13 @@ def train_ppo_recurrent(
             print("eval:", {k: round(v, 3) for k, v in eval_metrics.items()}, flush=True)
 
             # Check if this is the best model and save if so
-            latest_ckpt = os.path.join(cfg.run_dir, "checkpoints", f"flight{global_flight:09d}_step{global_step:09d}.pt")
-            if os.path.exists(latest_ckpt):
+            # Find latest checkpoint by step number (flight number changes, step is stable)
+            ckpt_dir = os.path.join(cfg.run_dir, "checkpoints")
+            ckpt_files = [f for f in os.listdir(ckpt_dir) if f.startswith("flight") and f.endswith(".pt")]
+            ckpt_files.sort(key=lambda x: int(x.split("_step")[1].split(".")[0]), reverse=True)
+            latest_ckpt = os.path.join(ckpt_dir, ckpt_files[0]) if ckpt_files else None
+
+            if latest_ckpt and os.path.exists(latest_ckpt):
                 # Pass current curriculum for difficulty tracking
                 curriculum_info = {
                     "n_gates": current_env_kwargs().get("n_gates", 3),
