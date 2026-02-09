@@ -1,0 +1,8 @@
+Metadata-Version: 2.4
+Name: rl-drone-hoops
+Version: 0.0.1
+Summary: Pure-RL racing drone through hoops with camera+IMU (MuJoCo).
+Requires-Python: >=3.9
+Requires-Dist: numpy>=1.23
+Requires-Dist: gymnasium>=0.29
+Requires-Dist: mujoco==2.3.7

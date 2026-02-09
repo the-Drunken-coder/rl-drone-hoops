@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 hoopsctl.py - Ops helper for rl-drone-hoops.
 
@@ -96,6 +96,7 @@ def _dir_size_bytes(p: Path) -> int:
             try:
                 total += (Path(root) / fn).stat().st_size
             except OSError:
+                # Ignore files that cannot be accessed when computing directory size.
                 pass
     return total
 
@@ -149,8 +150,8 @@ def _ensure_ansi_on_windows() -> None:
         return
     try:
         import ctypes
-        from ctypes import wintypes
 
+        wintypes = ctypes.wintypes
         kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
         GetStdHandle = kernel32.GetStdHandle
         GetConsoleMode = kernel32.GetConsoleMode
@@ -219,10 +220,16 @@ def _start_detached_process(cmd: Sequence[str], *, train_log: Path, env_extra: D
     f = open(train_log, 'ab', buffering=0)
     env = os.environ.copy()
     env.update(env_extra)
-    if _is_windows():
-        creationflags = 0x00000200 | 0x00000008  # CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS
-        return subprocess.Popen(list(cmd), cwd=str(ROOT), env=env, stdout=f, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, creationflags=creationflags)
-    return subprocess.Popen(list(cmd), cwd=str(ROOT), env=env, stdout=f, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, preexec_fn=os.setsid)  # type: ignore[arg-type]
+    try:
+        if _is_windows():
+            creationflags = 0x00000200 | 0x00000008  # CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS
+            proc = subprocess.Popen(list(cmd), cwd=str(ROOT), env=env, stdout=f, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, creationflags=creationflags)
+        else:
+            proc = subprocess.Popen(list(cmd), cwd=str(ROOT), env=env, stdout=f, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, preexec_fn=os.setsid)  # type: ignore[arg-type]
+    finally:
+        # Close file handle in parent process; child still has its own handle
+        f.close()
+    return proc
 
 
 def start_training(opts: StartOpts) -> Dict[str, Any]:

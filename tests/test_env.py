@@ -77,25 +77,28 @@ class TestMujocoDroneHoopsEnv:
         """Test step clamps actions to [-1, 1]."""
         obs, _ = env.reset()
         action = np.array([2.0, -2.0, 0.0, 0.0], dtype=np.float32)
-        obs, _, _, _, _ = env.step(action)
-        # Should not raise
-        assert True
+        obs, _, _, _, info = env.step(action)
+        # Verify last_action was clamped
+        assert np.all(obs["last_action"] >= -1.0)
+        assert np.all(obs["last_action"] <= 1.0)
 
     def test_episode_terminates_on_crash(self, env):
         """Test episode terminates when drone crashes."""
         obs, _ = env.reset()
+        crash_occurred = False
         # Apply large actions to crash the drone
         for _ in range(500):  # Should crash before max steps
             action = np.array([1.0, 1.0, 1.0, 0.0], dtype=np.float32)
             obs, reward, terminated, truncated, info = env.step(action)
-            if terminated or truncated:
+            if terminated and info.get("crash", True):
+                crash_occurred = True
                 break
-        assert terminated or truncated
+        assert crash_occurred, "Expected drone to crash but it didn't"
 
     def test_reward_weights_validation(self):
         """Test invalid reward weights are caught."""
         with pytest.raises(ValueError, match="Reward weight"):
-            MujocoDroneHoopsEnv(k_smooth=1e10)
+            MujocoDroneHoopsEnv(reward_weights={"k_smooth": 1e10})
 
     def test_gate_radius_validation(self):
         """Test invalid gate radius is caught."""
@@ -130,9 +133,9 @@ class TestMujocoDroneHoopsEnv:
         """Test render_rgb caches renderers correctly."""
         env.reset()
         # Create renderers at different resolutions
-        rgb1 = env.render_rgb(height=128, width=128)
-        rgb2 = env.render_rgb(height=64, width=64)
-        rgb3 = env.render_rgb(height=128, width=128)  # Same as rgb1
+        env.render_rgb(height=128, width=128)
+        env.render_rgb(height=64, width=64)
+        env.render_rgb(height=128, width=128)  # Same as first call
         # Should reuse cached renderer
         assert len(env._extra_renderers) == 2  # Two different sizes
 
