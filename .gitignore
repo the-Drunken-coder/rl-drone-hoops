@@ -26,6 +26,7 @@ env/
 # Training artifacts (large / machine-local)
 runs/
 videos/
+training.log
 *.mp4
 *.tfevents.*
 
