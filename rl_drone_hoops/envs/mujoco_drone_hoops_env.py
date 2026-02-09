@@ -15,10 +15,6 @@ import numpy as np
 
 from rl_drone_hoops.constants import (
     ACTION_DIM,
-    DEFAULT_CAMERA_FPS,
-    DEFAULT_CONTROL_HZ,
-    DEFAULT_IMU_HZ,
-    DEFAULT_PHYSICS_HZ,
     EPSILON,
     MAX_CACHED_RENDERERS,
     MAX_TILT_DEG,
@@ -811,10 +807,11 @@ class MujocoDroneHoopsEnv(gym.Env):
         key = (h, w)
         r = self._extra_renderers.get(key)
         if r is None:
-            # Evict oldest renderer if cache is full (simple LRU)
+            # Evict oldest renderer if cache is full (FIFO eviction)
             if len(self._extra_renderers) >= MAX_CACHED_RENDERERS:
                 oldest_key = next(iter(self._extra_renderers))
-                self._extra_renderers.pop(oldest_key)
+                evicted_renderer = self._extra_renderers.pop(oldest_key)
+                evicted_renderer.close()
             r = mujoco.Renderer(self.model, height=h, width=w)
             self._extra_renderers[key] = r
         r.update_scene(self.data, camera=self._fpv_cam_id)

@@ -52,8 +52,8 @@ class InProcessVecEnv:
         for i, env in enumerate(self.envs):
             try:
                 obs, r, term, trunc, info = env.step(actions[i])
-            except Exception as e:
-                logger.error(f"Error in step for env {i}: {e}")
+            except Exception:
+                logger.exception("Error in step for env %s", i)
                 raise
             done = bool(term or trunc)
             rewards[i] = float(r)
@@ -62,8 +62,8 @@ class InProcessVecEnv:
             if done:
                 try:
                     obs, _ = env.reset()
-                except Exception as e:
-                    logger.error(f"Error resetting env {i} after done: {e}")
+                except Exception:
+                    logger.exception("Error resetting env %s after done", i)
                     raise
             for k, v in obs.items():
                 obs1.setdefault(k, []).append(v)

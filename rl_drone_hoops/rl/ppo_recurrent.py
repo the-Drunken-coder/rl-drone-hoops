@@ -19,7 +19,6 @@ from rl_drone_hoops.envs import MujocoDroneHoopsEnv
 from rl_drone_hoops.rl.distributions import SquashedDiagGaussian
 from rl_drone_hoops.rl.model import RecurrentActorCritic
 from rl_drone_hoops.rl.vec import InProcessVecEnv
-from rl_drone_hoops.utils.checkpoint import latest_checkpoint_path
 
 logger = logging.getLogger(__name__)
 
