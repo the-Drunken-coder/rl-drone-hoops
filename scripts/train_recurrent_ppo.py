@@ -108,6 +108,10 @@ Examples:
     ap.add_argument("--eval-every-steps", type=int, default=None)
     ap.add_argument("--eval-episodes", type=int, default=None)
 
+    # MJX (JAX-accelerated MuJoCo)
+    ap.add_argument("--use-mjx", action="store_true", default=False,
+                     help="Use MJX (MuJoCo XLA) for GPU-accelerated batched physics.")
+
     args = ap.parse_args()
 
     # Load base config from file
@@ -161,6 +165,7 @@ Examples:
         run_dir=run_dir,
         seed=int(pick("seed")),
         device=str(pick("device")),
+        use_mjx=bool(args.use_mjx),
         num_envs=int(pick("num_envs")),
         total_steps=int(pick("total_steps")),
         rollout_steps=int(pick("rollout_steps")),

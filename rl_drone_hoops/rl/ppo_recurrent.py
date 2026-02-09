@@ -82,6 +82,9 @@ class PPOConfig:
     eval_every_steps: int = 50_000
     eval_episodes: int = 3
 
+    # MJX (JAX-accelerated MuJoCo) toggle
+    use_mjx: bool = False
+
     # Env params (can be overridden per curriculum stage by caller)
     image_size: int = 96
     image_rot90: int = 0
@@ -287,7 +290,25 @@ def train_ppo_recurrent(
 
         return _fn
 
-    venv = InProcessVecEnv([make_env(i) for i in range(cfg.num_envs)])
+    if cfg.use_mjx:
+        from rl_drone_hoops.envs.mjx_vec_adapter import MJXVecAdapter
+
+        venv = MJXVecAdapter(
+            num_envs=cfg.num_envs,
+            image_size=cfg.image_size,
+            camera_fps=cfg.camera_fps,
+            imu_hz=cfg.imu_hz,
+            control_hz=cfg.control_hz,
+            physics_hz=cfg.physics_hz,
+            n_gates=cfg.n_gates,
+            gate_radius=cfg.gate_radius,
+            track_type=cfg.track_type,
+            turn_max_deg=cfg.turn_max_deg,
+            episode_s=cfg.episode_s,
+            seed=cfg.seed,
+        )
+    else:
+        venv = InProcessVecEnv([make_env(i) for i in range(cfg.num_envs)])
     obs = venv.reset(seeds=[cfg.seed + i for i in range(cfg.num_envs)])
 
     imu_window_n = obs["imu"].shape[1]
