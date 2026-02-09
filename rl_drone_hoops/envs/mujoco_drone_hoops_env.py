@@ -929,7 +929,7 @@ class MujocoDroneHoopsEnv(gym.Env):
 
     def render(self):
         # Return current FPV RGB for debugging if needed.
-        # Always update scene to ensure current state is rendered
+        # Update scene to reflect current simulation state
         self.renderer.update_scene(self.data, camera=self._fpv_cam_id)
         rgb = self.renderer.render()
         if self.image_rot90:
@@ -974,17 +974,20 @@ class MujocoDroneHoopsEnv(gym.Env):
         # Some releases expose .close(), others rely on GC/free().
         for name in ("close", "free", "release"):
             fn = getattr(r, name, None)
-            if callable(fn):
-                try:
-                    fn()
-                except TypeError:
-                    # Some bindings expose a descriptor without args but with a different signature.
-                    try:
-                        fn  # noqa: B018
-                    except Exception:
-                        pass
-                except Exception:
-                    pass
+            if not callable(fn):
+                continue
+            try:
+                fn()
+            except TypeError:
+                # Some bindings expose a descriptor or method with an unexpected signature.
+                # In that case, try the next candidate method name.
+                continue
+            except Exception:
+                # If calling this candidate fails for any other reason, fall back to the
+                # next possible cleanup method name.
+                continue
+            else:
+                # Successfully called a cleanup method; no need to try further.
                 return
 
     def pose_rpy(self) -> Tuple[np.ndarray, np.ndarray]:

@@ -3,9 +3,8 @@ from __future__ import annotations
 
 import logging
 import multiprocessing as mp
-import os
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Dict, List, Optional, Type
 
 import numpy as np
 
@@ -42,20 +41,24 @@ def _subproc_worker(remote, parent_remote, env_cls: Type, env_kwargs: dict):
                 try:
                     env.close()
                 except Exception:
+                    # Best-effort cleanup: environment close failures should not be fatal.
                     pass
                 remote.close()
                 break
             else:
                 raise RuntimeError(f"unknown cmd: {cmd}")
-    except BaseException as e:
+    except Exception as e:
         # Send a simple error payload; exceptions themselves can be non-pickleable.
         try:
             remote.send(("__error__", repr(e)))
         except Exception:
+            # If sending the error back to the parent fails, the worker cannot recover,
+            # so we intentionally ignore this exception and proceed with cleanup.
             pass
         try:
             remote.close()
         except Exception:
+            # Best-effort cleanup: ignore errors while closing the remote pipe.
             pass
 
 
@@ -74,7 +77,6 @@ class SubprocVecEnv:
 
         # Prefer spawn to avoid MuJoCo + fork hazards.
         ctx = mp.get_context("spawn")
-        self._ctx = ctx
         self._closed = False
 
         self.remotes, self.work_remotes = zip(*[ctx.Pipe(duplex=True) for _ in range(self.num_envs)])
@@ -109,6 +111,17 @@ class SubprocVecEnv:
         return obs_out
 
     def step(self, actions: np.ndarray) -> StepResult:
+        """Execute one step in all subprocess environments in parallel.
+
+        Args:
+            actions: Array of shape (num_envs, action_dim)
+
+        Returns:
+            StepResult with observations (reused buffer), rewards, dones, and infos.
+            **Important**: StepResult.obs is a reused buffer that is mutated in-place
+            on subsequent calls. If you need to preserve observations across steps,
+            make a deep copy before calling step() again.
+        """
         if self._closed:
             raise RuntimeError("SubprocVecEnv is closed")
         if self._obs_buf is None:
@@ -142,12 +155,38 @@ class SubprocVecEnv:
             try:
                 remote.send(("close", None))
             except Exception:
+                # Best-effort: worker may have already died or pipe may be broken.
                 pass
         for p in self.procs:
             try:
                 p.join(timeout=2.0)
             except Exception:
+                # Best-effort: ignore join errors.
                 pass
+        
+        # Terminate any workers that didn't exit gracefully
+        for p in self.procs:
+            if p.is_alive():
+                logger.warning("Terminating unresponsive worker process %s", getattr(p, "pid", None))
+                try:
+                    p.terminate()
+                except Exception as e:
+                    logger.warning("Error terminating worker process %s: %s", getattr(p, "pid", None), e)
+        
+        # Give terminated processes a brief chance to exit, then kill if necessary
+        for p in self.procs:
+            if p.is_alive():
+                try:
+                    p.join(timeout=1.0)
+                except Exception:
+                    pass
+                if p.is_alive():
+                    logger.warning("Killing stubborn worker process %s", getattr(p, "pid", None))
+                    try:
+                        p.kill()
+                        p.join(timeout=1.0)
+                    except Exception as e:
+                        logger.warning("Error killing worker process %s: %s", getattr(p, "pid", None), e)
 
 
 class InProcessVecEnv:
@@ -183,7 +222,10 @@ class InProcessVecEnv:
             actions: Array of shape (num_envs, action_dim)
 
         Returns:
-            StepResult with stacked observations, rewards, dones, and infos
+            StepResult with observations (reused buffer), rewards, dones, and infos.
+            **Important**: StepResult.obs is a reused buffer that is mutated in-place
+            on subsequent calls. If you need to preserve observations across steps,
+            make a deep copy before calling step() again.
         """
         if self._obs_buf is None:
             # Defensive: allow step() without an explicit reset() call.

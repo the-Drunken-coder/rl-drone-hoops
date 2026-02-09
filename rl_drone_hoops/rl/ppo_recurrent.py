@@ -113,9 +113,37 @@ class AsyncCheckpointSaver:
         self.queue.put((ckpt_copy, path))
 
     def shutdown(self) -> None:
-        """Wait for all pending saves to complete."""
-        self.queue.put(None)  # Sentinel to stop worker
+        """Request the worker to stop and wait briefly for termination.
+
+        Uses non-blocking queue operations to avoid hanging shutdown if the
+        queue is full or the worker is stuck in I/O.
+        """
+        # Signal the worker to stop as soon as possible.
+        self._stop_event.set()
+
+        # Best-effort enqueue of sentinel without blocking.
+        try:
+            self.queue.put_nowait(None)  # Sentinel to stop worker
+        except queue.Full:
+            # Queue is full; drop one pending item to make room, then retry once.
+            try:
+                _ = self.queue.get_nowait()
+            except queue.Empty:
+                pass
+            try:
+                self.queue.put_nowait(None)
+            except queue.Full:
+                logger.warning(
+                    "AsyncCheckpointSaver queue full during shutdown; "
+                    "skipping sentinel put."
+                )
+
+        # Wait briefly for the worker thread to exit.
         self.thread.join(timeout=5.0)
+        if self.thread.is_alive():
+            logger.warning(
+                "AsyncCheckpointSaver worker thread did not terminate within timeout."
+            )
 
 
 @dataclass
@@ -677,7 +705,18 @@ def train_ppo_recurrent(
 
     finally:
         # (Optimization 4.1: Wait for pending async checkpoint saves)
-        ckpt_saver.shutdown()
-
-    venv.close()
-    writer.close()
+        try:
+            ckpt_saver.shutdown()
+        except Exception as e:
+            logger.warning("Error during checkpoint saver shutdown: %s", e)
+        
+        # Close vector env and TensorBoard writer
+        try:
+            venv.close()
+        except Exception as e:
+            logger.warning("Error closing vector env: %s", e)
+        
+        try:
+            writer.close()
+        except Exception as e:
+            logger.warning("Error closing TensorBoard writer: %s", e)
