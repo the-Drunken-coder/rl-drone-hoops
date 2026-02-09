@@ -8,11 +8,15 @@ __pycache__/
 .coverage
 .coverage.*
 htmlcov/
+*.egg-info/
+build/
+dist/
 
 # Editors/OS
 .DS_Store
 .idea/
 .vscode/
+.claude/
 
 # Envs
 .venv/
