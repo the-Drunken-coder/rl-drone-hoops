@@ -238,6 +238,10 @@ def start_training(opts: StartOpts) -> Dict[str, Any]:
     VIDEOS_DIR.mkdir(parents=True, exist_ok=True)
 
     train_log = opts.run_dir / 'train.log'
+    py_path = str(ROOT)
+    existing_py_path = os.environ.get('PYTHONPATH')
+    if existing_py_path:
+        py_path = py_path + os.pathsep + existing_py_path
 
     base_cmd: List[str] = [opts.python, '-u', str((ROOT / 'scripts' / 'train_recurrent_ppo.py').resolve()), '--run-dir', str(opts.run_dir), '--total-steps', str(int(opts.total_steps)), '--num-envs', str(int(opts.num_envs))]
     if opts.checkpoint:
@@ -252,7 +256,7 @@ def start_training(opts: StartOpts) -> Dict[str, Any]:
     if _is_posix():
         if _tmux_available():
             session = opts.run_name
-            cmd_str = f"export RL_DRONE_HOOPS_VIDEO_DIR={shlex_quote(str(VIDEOS_DIR.resolve()))}; mkdir -p {shlex_quote(str(opts.run_dir))}; {' '.join(shlex_quote(x) for x in base_cmd)} 2>&1 | tee -a {shlex_quote(str(train_log))}"
+            cmd_str = f"export RL_DRONE_HOOPS_VIDEO_DIR={shlex_quote(str(VIDEOS_DIR.resolve()))}; export PYTHONPATH={shlex_quote(py_path)}; mkdir -p {shlex_quote(str(opts.run_dir))}; {' '.join(shlex_quote(x) for x in base_cmd)} 2>&1 | tee -a {shlex_quote(str(train_log))}"
             _run(['tmux', 'new-session', '-d', '-s', session, 'bash', '-lc', cmd_str], check=True)
             meta['mode'] = 'tmux'
             meta['tmux_session'] = session
@@ -261,7 +265,7 @@ def start_training(opts: StartOpts) -> Dict[str, Any]:
                 os.execvp('tmux', ['tmux', 'attach', '-t', session])
             return {'ok': True, 'mode': 'tmux', 'run_name': opts.run_name, 'run_dir': str(opts.run_dir), 'tmux_session': session}
 
-        proc = _start_detached_process(base_cmd, train_log=train_log, env_extra={'RL_DRONE_HOOPS_VIDEO_DIR': str(VIDEOS_DIR.resolve())})
+        proc = _start_detached_process(base_cmd, train_log=train_log, env_extra={'RL_DRONE_HOOPS_VIDEO_DIR': str(VIDEOS_DIR.resolve()), 'PYTHONPATH': py_path})
         meta['mode'] = 'detached_no_tmux'
         meta['pid'] = proc.pid
         _write_json(_run_meta_path(opts.run_dir), meta)
@@ -290,14 +294,14 @@ def start_training(opts: StartOpts) -> Dict[str, Any]:
             if opts.extra_args:
                 base_cmd_u += list(opts.extra_args)
 
-            cmd_str = f"cd {shlex_quote(root_u)}; export RL_DRONE_HOOPS_VIDEO_DIR={shlex_quote(videos_u)}; mkdir -p {shlex_quote(run_dir_u)}; {' '.join(shlex_quote(x) for x in base_cmd_u)} 2>&1 | tee -a {shlex_quote(train_log_u)}"
+            cmd_str = f"cd {shlex_quote(root_u)}; export RL_DRONE_HOOPS_VIDEO_DIR={shlex_quote(videos_u)}; export PYTHONPATH={shlex_quote(root_u)}; mkdir -p {shlex_quote(run_dir_u)}; {' '.join(shlex_quote(x) for x in base_cmd_u)} 2>&1 | tee -a {shlex_quote(train_log_u)}"
             _wsl_exec(f"tmux new-session -d -s {shlex_quote(session)} bash -lc {shlex_quote(cmd_str)}", check=True)
             meta['mode'] = 'wsl_tmux'
             meta['tmux_session'] = session
             _write_json(_run_meta_path(opts.run_dir), meta)
             return {'ok': True, 'mode': 'wsl_tmux', 'run_name': opts.run_name, 'run_dir': str(opts.run_dir), 'tmux_session': session}
 
-    proc = _start_detached_process(base_cmd, train_log=train_log, env_extra={'RL_DRONE_HOOPS_VIDEO_DIR': str(VIDEOS_DIR.resolve())})
+    proc = _start_detached_process(base_cmd, train_log=train_log, env_extra={'RL_DRONE_HOOPS_VIDEO_DIR': str(VIDEOS_DIR.resolve()), 'PYTHONPATH': py_path})
     meta['mode'] = 'win_detached'
     meta['pid'] = proc.pid
     _write_json(_run_meta_path(opts.run_dir), meta)

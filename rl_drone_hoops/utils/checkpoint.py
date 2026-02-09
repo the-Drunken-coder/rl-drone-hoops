@@ -25,13 +25,24 @@ def latest_checkpoint_path(run_dir: str) -> Optional[str]:
     best_path: Optional[str] = None
 
     for name in os.listdir(ckpt_dir):
-        if not (name.startswith("step") and name.endswith(".pt")):
+        if not name.endswith(".pt"):
             continue
-        # step000123456.pt
-        num = name[len("step") : -len(".pt")]
-        if not num.isdigit():
+
+        step = None
+        if name.startswith("step"):
+            # step000123456.pt
+            num = name[len("step") : -len(".pt")]
+            if num.isdigit():
+                step = int(num)
+        elif "_step" in name:
+            # flight000001835_step000600064.pt
+            base = name[: -len(".pt")]
+            maybe = base.split("_step")[-1]
+            if maybe.isdigit():
+                step = int(maybe)
+
+        if step is None:
             continue
-        step = int(num)
         if step > best_step:
             best_step = step
             best_path = os.path.join(ckpt_dir, name)
