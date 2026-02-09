@@ -30,7 +30,8 @@ training.log
 *.mp4
 *.tfevents.*
 
-# Model checkpoints (large), but keep metadata
-models/*.pt
+# Models folder: track best model and metadata only
+!models/
 !models/.gitkeep
 !models/best_model.json
+!models/best_model_*.pt
