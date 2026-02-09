@@ -161,20 +161,18 @@ class MJXVecAdapter:
                 info[k] = val.item() if val.ndim == 0 else val
             infos.append(info)
 
-        # Auto-reset done environments
+        # Auto-reset done environments (selective per-env reset)
         done_mask = np.asarray(dones)
         if done_mask.any():
-            # For simplicity, reset the entire batch when any env is done.
-            # This is the simplest correct approach; a more optimised version
-            # would selectively reset only done slices.
             self._reset_counter += 1
-            new_state = self._physics.reset(seed=self._seed + self._reset_counter * 1000)
+            # Use a distinct seed per reset to avoid repeating the same track.
+            reset_seed = self._seed + self._reset_counter * self.num_envs
+            new_state = self._physics.reset(seed=reset_seed)
 
-            # Selectively replace done envs in current state with fresh state
+            # Selectively replace only done envs with fresh state
             import jax
 
             def _select(old, new):
-                # done_mask has shape (B,); broadcast to match array shape
                 mask = jnp.array(done_mask)
                 for _ in range(old.ndim - 1):
                     mask = mask[..., None]

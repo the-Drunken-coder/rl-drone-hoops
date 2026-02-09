@@ -211,7 +211,7 @@ class TestMJXVecAdapter:
         """Test reset returns stacked observations."""
         obs = vec.reset()
         assert obs["image"].shape == (2, 64, 64, 1)
-        assert obs["imu"].shape[1] == 2  or obs["imu"].ndim == 3
+        assert obs["imu"].shape == (2, vec._physics.imu_window_n, 6)
         assert obs["last_action"].shape == (2, 4)
 
     def test_step(self, vec):

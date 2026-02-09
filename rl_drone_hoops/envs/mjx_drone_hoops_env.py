@@ -254,7 +254,10 @@ class MJXDronePhysics:
         if self.track_type == "straight":
             for i in range(self.n_gates):
                 x = (i + 1) * self.gate_spacing
-                y = rng.uniform(-min(1.0, self.gate_y_range), min(1.0, self.gate_y_range))
+                # Clamp lateral range to ±1m for straight tracks (matches
+                # MujocoDroneHoopsEnv) so gates stay near the centerline.
+                y_lim = min(1.0, self.gate_y_range)
+                y = rng.uniform(-y_lim, y_lim)
                 z = rng.uniform(*self.gate_z_range)
                 center = np.array([x, y, z], dtype=np.float64)
                 normal = np.array([1.0, 0.0, 0.0], dtype=np.float64)
