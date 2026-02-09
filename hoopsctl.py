@@ -226,10 +226,10 @@ def _start_detached_process(cmd: Sequence[str], *, train_log: Path, env_extra: D
             proc = subprocess.Popen(list(cmd), cwd=str(ROOT), env=env, stdout=f, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, creationflags=creationflags)
         else:
             proc = subprocess.Popen(list(cmd), cwd=str(ROOT), env=env, stdout=f, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, preexec_fn=os.setsid)  # type: ignore[arg-type]
+        return proc
     finally:
         # Close file handle in parent process; child still has its own handle
         f.close()
-    return proc
 
 
 def start_training(opts: StartOpts) -> Dict[str, Any]:

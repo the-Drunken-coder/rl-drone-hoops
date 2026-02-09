@@ -59,8 +59,8 @@ class TestRewardComputation:
                 assert "reward_gate" in info
                 gate_passed = True
                 break
-        # Note: This test may not always pass a gate due to randomness,
-        # but it verifies the gate reward path when a gate is passed
+        # Note: Due to randomness in gate placement and dynamics,
+        # this test may occasionally not pass a gate within 500 steps
 
     def test_smoothness_reward_penalizes_changes(self, env):
         """Test that smoothness penalty penalizes action changes."""

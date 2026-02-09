@@ -90,7 +90,7 @@ class TestMujocoDroneHoopsEnv:
         for _ in range(500):  # Should crash before max steps
             action = np.array([1.0, 1.0, 1.0, 0.0], dtype=np.float32)
             obs, reward, terminated, truncated, info = env.step(action)
-            if terminated and info.get("crash", True):
+            if terminated and info.get("crash", False):
                 crash_occurred = True
                 break
         assert crash_occurred, "Expected drone to crash but it didn't"
