@@ -150,8 +150,8 @@ def _ensure_ansi_on_windows() -> None:
         return
     try:
         import ctypes
+        from ctypes import wintypes
 
-        wintypes = ctypes.wintypes
         kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
         GetStdHandle = kernel32.GetStdHandle
         GetConsoleMode = kernel32.GetConsoleMode
