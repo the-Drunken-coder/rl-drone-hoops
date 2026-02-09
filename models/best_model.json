@@ -1,10 +1,15 @@
 {
-  "best_return": -999999.0,
+  "best_return": -72.79648806103529,
   "best_gates": 0.0,
   "best_success_rate": 0.0,
-  "checkpoint_path": null,
-  "run_name": null,
-  "flight": 0,
+  "checkpoint_path": "models\\best_model_flight000000095.pt",
+  "run_name": "ppo_rnn_20260209_001208",
+  "flight": 95,
   "step": 0,
-  "curriculum": {}
+  "curriculum": {
+    "n_gates": 3,
+    "gate_radius": 1.25,
+    "track_type": "straight",
+    "turn_max_deg": 20.0
+  }
 }
