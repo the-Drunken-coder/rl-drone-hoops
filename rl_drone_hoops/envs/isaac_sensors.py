@@ -176,11 +176,13 @@ class IsaacSensors:
             angular_vel = state["angular_velocity"]  # (num_envs, 3)
             velocity = state["velocity"]  # (num_envs, 3)
 
-            # Simple finite-difference acceleration estimate
-            # In a full implementation, this would use proper body-frame
-            # acceleration from the physics engine
+            # Simple finite-difference acceleration estimate.
+            # NOTE: This is a simplified placeholder. A full implementation
+            # would compute actual body-frame acceleration from the physics
+            # engine. The constant Z-value simulates gravity-compensated
+            # accelerometer output at rest.
             accel = torch.zeros_like(velocity)
-            accel[:, 2] = 9.81  # Gravity-compensated (at hover)
+            accel[:, 2] = 9.81
 
             # Combine into 6-DOF IMU reading: [gx, gy, gz, ax, ay, az]
             imu_sample = torch.cat([angular_vel, accel], dim=1)  # (num_envs, 6)

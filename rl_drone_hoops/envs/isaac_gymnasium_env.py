@@ -373,8 +373,10 @@ class IsaacDroneHoopsEnv(gym.Env):
         for _ in range(self._physics_steps_per_control):
             self.physics.step()
             state = self.physics.get_state()
-            sim_time = (self._step_count.float() * self._control_dt).mean().item()
-            self.sensors.update(state, sim_time)
+            # Use a global simulation clock for sensor timing (monotonically
+            # increasing regardless of per-env resets).
+            self._global_sim_time = getattr(self, "_global_sim_time", 0.0) + self._physics_dt
+            self.sensors.update(state, self._global_sim_time)
 
         self._step_count += 1
         self._last_action = actions.clone()
