@@ -134,6 +134,7 @@ def extract_ppo_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
     track_cfg = cfg.get("track", {})
     eval_cfg = cfg.get("evaluation", {})
     sys_cfg = cfg.get("system", {})
+    reward_cfg = cfg.get("reward", {})
 
     return {
         # PPO params
@@ -172,6 +173,9 @@ def extract_ppo_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
         # Evaluation params
         "eval_every_steps": eval_cfg.get("eval_every_steps", 50_000),
         "eval_episodes": eval_cfg.get("eval_episodes", 3),
+
+        # Reward weights (optional; passed to env)
+        "reward_weights": reward_cfg if isinstance(reward_cfg, dict) and reward_cfg else None,
     }
 
 

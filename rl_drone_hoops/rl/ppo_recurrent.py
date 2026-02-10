@@ -179,6 +179,7 @@ class PPOConfig:
         turn_max_deg: Max turn angle in track generation
         n_gates: Number of gates per episode
         episode_s: Episode duration in seconds
+        reward_weights: Optional dict of reward weights passed to env
     """
 
     run_dir: str
@@ -219,6 +220,7 @@ class PPOConfig:
     turn_max_deg: float = 20.0
     n_gates: int = 3
     episode_s: float = 12.0
+    reward_weights: Optional[Dict[str, float]] = None
 
 
 def _move_opt_state_to_device(opt: torch.optim.Optimizer, device: torch.device) -> None:
@@ -412,6 +414,7 @@ def train_ppo_recurrent(
                 track_type=cfg.track_type,
                 turn_max_deg=cfg.turn_max_deg,
                 episode_s=cfg.episode_s,
+                reward_weights=dict(cfg.reward_weights) if cfg.reward_weights else None,
             )
         )
 
@@ -498,6 +501,7 @@ def train_ppo_recurrent(
             track_type=cfg.track_type,
             turn_max_deg=cfg.turn_max_deg,
             episode_s=cfg.episode_s,
+            reward_weights=dict(cfg.reward_weights) if cfg.reward_weights else None,
         )
         if not curriculum:
             return base

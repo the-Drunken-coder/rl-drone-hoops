@@ -90,6 +90,17 @@ This allows you to:
 - `physics_hz`: Physics simulation rate
 - `max_tilt_deg`: Max roll/pitch before crash
 
+### `reward` - Reward Weights
+- `r_alive`: Survival reward per step
+- `r_gate`: Bonus for passing a gate
+- `k_progress`: Reward for reducing distance to next gate
+- `k_center`: Penalty for lateral distance from gate axis
+- `k_speed`: Reward for velocity toward the gate
+- `k_smooth`: Penalty for action changes
+- `k_tilt`: Penalty for roll/pitch magnitude
+- `k_angrate`: Penalty for angular rate magnitude
+- `r_crash`: Penalty applied on crash
+
 ### `track` - Course Generation
 - `track_type`: "straight" or "random_turns"
 - `n_gates`: Number of gates

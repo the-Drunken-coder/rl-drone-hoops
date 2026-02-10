@@ -188,6 +188,7 @@ Examples:
         adam_eps=float(pick("adam_eps")),
         update_epochs=int(pick("update_epochs", "update-epochs")),
         minibatch_envs=int(pick("minibatch_envs")),
+        reward_weights=pick("reward_weights"),
         vec_mode=str(pick("vec_mode", "vec-mode")),
     )
 
