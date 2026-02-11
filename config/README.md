@@ -96,6 +96,8 @@ This allows you to:
 - `k_progress`: Reward for reducing distance to next gate
 - `k_center`: Penalty for lateral distance from gate axis
 - `k_speed`: Reward for velocity toward the gate
+- `k_heading`: Reward for yaw alignment toward the gate (horizontal only)
+- `k_away`: Penalty for increasing distance to the gate
 - `k_smooth`: Penalty for action changes
 - `k_tilt`: Penalty for roll/pitch magnitude
 - `k_angrate`: Penalty for angular rate magnitude

@@ -201,6 +201,9 @@ class MujocoDroneHoopsEnv(gym.Env):
         self.k_tilt = 0.05  # penalize roll/pitch magnitude (rad)
         # Keep this bounded to avoid huge negative returns when the drone is already unstable.
         self.k_angrate = 0.0002  # penalize body angular rate magnitude
+        # Encourage yaw alignment toward the next gate and discourage moving away.
+        self.k_heading = 1.0
+        self.k_away = 1.0
         self.r_crash = -20.0
 
         if reward_weights:
@@ -213,6 +216,8 @@ class MujocoDroneHoopsEnv(gym.Env):
                 "k_smooth",
                 "k_tilt",
                 "k_angrate",
+                "k_heading",
+                "k_away",
                 "r_crash",
             }
             unknown = [k for k in reward_weights.keys() if k not in allowed]
@@ -368,6 +373,8 @@ class MujocoDroneHoopsEnv(gym.Env):
             "k_smooth": self.k_smooth,
             "k_tilt": self.k_tilt,
             "k_angrate": self.k_angrate,
+            "k_heading": self.k_heading,
+            "k_away": self.k_away,
         }
         for name, val in weights.items():
             if not MIN_REWARD_WEIGHT <= val <= MAX_REWARD_WEIGHT:
@@ -758,12 +765,16 @@ class MujocoDroneHoopsEnv(gym.Env):
         # Shaping relative to next gate (if any).
         # (Optimization 2.2: Use cached gate data instead of repeated lookups)
         shaping = 0.0
+        heading_reward = 0.0
         if self._current_gate_radius > 0.0:
             # (Optimization 1.3: Use squared norm to avoid sqrt where possible)
             # For progress reward, we only care about relative distances, so compute actual norms
             d_prev = float(np.linalg.norm(p_prev - self._current_gate_center))
             d_curr = float(np.linalg.norm(p - self._current_gate_center))
             shaping += self.k_progress * (d_prev - d_curr)
+            # Extra penalty for moving away from the gate.
+            away = max(0.0, d_curr - d_prev)
+            shaping += -self.k_away * away
 
             # Centering penalty based on distance to gate axis at current position.
             d = p - self._current_gate_center
@@ -777,6 +788,16 @@ class MujocoDroneHoopsEnv(gym.Env):
             v_toward = float(np.dot(v, to_gate))
             shaping += self.k_speed * np.clip(v_toward, 0.0, 20.0)
 
+            # Horizontal heading alignment toward the gate (ignore vertical component).
+            to_gate_h = self._current_gate_center - p
+            to_gate_h[2] = 0.0
+            norm_h = float(np.linalg.norm(to_gate_h))
+            if norm_h > EPSILON:
+                yaw = float(rpy[2])
+                heading = np.array([np.cos(yaw), np.sin(yaw), 0.0], dtype=np.float64)
+                heading_align = float(np.dot(heading, to_gate_h / norm_h))
+                heading_reward = self.k_heading * heading_align
+
         # Smoothness penalty.
         da = a_norm.astype(np.float64) - a_prev_norm.astype(np.float64)
         smooth_pen = -self.k_smooth * float(np.dot(da, da))
@@ -789,7 +810,7 @@ class MujocoDroneHoopsEnv(gym.Env):
         w2 = self._norm_sq(w_body)
         ang_pen = -self.k_angrate * min(w2, 400.0)
 
-        reward = self.r_alive + gate_bonus + shaping + smooth_pen + tilt_pen + ang_pen
+        reward = self.r_alive + gate_bonus + shaping + heading_reward + smooth_pen + tilt_pen + ang_pen
 
         if terminated and info.get("crash", False):
             reward += self.r_crash
@@ -802,6 +823,7 @@ class MujocoDroneHoopsEnv(gym.Env):
                 "reward_alive": float(self.r_alive),
                 "reward_gate": float(gate_bonus),
                 "reward_shaping": float(shaping),
+                "reward_heading": float(heading_reward),
                 "reward_smooth": float(smooth_pen),
                 "reward_tilt": float(tilt_pen),
                 "reward_angrate": float(ang_pen),
