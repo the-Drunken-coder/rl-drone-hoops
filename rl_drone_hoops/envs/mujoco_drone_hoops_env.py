@@ -19,6 +19,7 @@ import numpy as np
 
 from rl_drone_hoops.constants import (
     ACTION_DIM,
+    CENTER_FALLOFF_DISTANCE,
     EPSILON,
     MAX_CACHED_RENDERERS,
     MAX_TILT_DEG,
@@ -190,21 +191,18 @@ class MujocoDroneHoopsEnv(gym.Env):
         self.ang_drag = 0.05
         self.thrust_tau = 0.05  # seconds, 1st-order thrust lag
 
-        # Reward weights (MVP).
-        # Add a small survival/stability reward to avoid the "crash immediately" local optimum.
-        self.r_alive = 0.1
-        self.r_gate = 10.0
-        self.k_progress = 1.5
-        self.k_center = 0.5
-        self.k_speed = 0.02
-        self.k_smooth = 0.02
-        self.k_tilt = 0.05  # penalize roll/pitch magnitude (rad)
-        # Keep this bounded to avoid huge negative returns when the drone is already unstable.
-        self.k_angrate = 0.0002  # penalize body angular rate magnitude
-        # Encourage yaw alignment toward the next gate and discourage moving away.
-        self.k_heading = 1.0
-        self.k_away = 1.0
-        self.r_crash = -20.0
+        # Reward weights — defaults match config/default.yaml.
+        self.r_alive = 0.2
+        self.r_gate = 150.0
+        self.k_progress = 5.0
+        self.k_center = 1.5
+        self.k_speed = 0.1
+        self.k_smooth = 0.01
+        self.k_tilt = 0.03  # penalize roll/pitch magnitude (rad)
+        self.k_angrate = 0.0001  # penalize body angular rate magnitude
+        self.k_heading = 0.2  # gentle nudge toward gate, not a primary signal
+        self.k_away = 1.5
+        self.r_crash = -10.0
 
         if reward_weights:
             allowed = {
@@ -776,12 +774,12 @@ class MujocoDroneHoopsEnv(gym.Env):
             away = max(0.0, d_curr - d_prev)
             shaping += -self.k_away * away
 
-            # Centering penalty based on distance to gate axis at current position.
+            # Centering penalty, attenuated by distance so it only matters near the gate.
             d = p - self._current_gate_center
             d_perp = d - np.dot(d, self._current_gate_normal) * self._current_gate_normal
             radial = float(np.linalg.norm(d_perp))
-            # Gate radius is validated to be > 0 in Gate.__post_init__, but use EPSILON as safeguard
-            shaping += -self.k_center * (radial / max(self._current_gate_radius, EPSILON))
+            proximity = float(np.clip(1.0 - d_curr / CENTER_FALLOFF_DISTANCE, 0.0, 1.0))
+            shaping += -self.k_center * (radial / max(self._current_gate_radius, EPSILON)) * proximity
 
             # Speed toward gate.
             to_gate = unit(self._current_gate_center - p)

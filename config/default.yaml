@@ -74,11 +74,11 @@ track:
 # ============================================================================
 reward:
   r_alive: 0.2
-  r_gate: 40.0
+  r_gate: 150.0
   k_progress: 5.0
   k_center: 1.5
   k_speed: 0.1
-  k_heading: 1.0
+  k_heading: 0.2
   k_away: 1.5
   k_smooth: 0.01
   k_tilt: 0.03
