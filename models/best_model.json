@@ -1,10 +1,10 @@
 {
-  "best_return": -72.79648806103529,
-  "best_gates": 0.0,
+  "best_return": 96.36066865341898,
+  "best_gates": 1.0,
   "best_success_rate": 0.0,
-  "checkpoint_path": "models\\best_model_flight000000095.pt",
-  "run_name": "ppo_rnn_20260209_001208",
-  "flight": 95,
+  "checkpoint_path": "models/best_model_flight000001705.pt",
+  "run_name": "ppo_rnn_20260210_231138",
+  "flight": 1705,
   "step": 0,
   "curriculum": {
     "n_gates": 3,

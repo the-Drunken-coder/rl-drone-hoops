@@ -219,6 +219,9 @@ def _start_detached_process(cmd: Sequence[str], *, train_log: Path, env_extra: D
     train_log.parent.mkdir(parents=True, exist_ok=True)
     f = open(train_log, 'ab', buffering=0)
     env = os.environ.copy()
+    # Reduce thread oversubscription for more predictable CPU usage.
+    env.setdefault('OMP_NUM_THREADS', '1')
+    env.setdefault('MKL_NUM_THREADS', '1')
     env.update(env_extra)
     try:
         if _is_windows():
@@ -256,7 +259,7 @@ def start_training(opts: StartOpts) -> Dict[str, Any]:
     if _is_posix():
         if _tmux_available():
             session = opts.run_name
-            cmd_str = f"export RL_DRONE_HOOPS_VIDEO_DIR={shlex_quote(str(VIDEOS_DIR.resolve()))}; export PYTHONPATH={shlex_quote(py_path)}; mkdir -p {shlex_quote(str(opts.run_dir))}; {' '.join(shlex_quote(x) for x in base_cmd)} 2>&1 | tee -a {shlex_quote(str(train_log))}"
+            cmd_str = f"export RL_DRONE_HOOPS_VIDEO_DIR={shlex_quote(str(VIDEOS_DIR.resolve()))}; export PYTHONPATH={shlex_quote(py_path)}; export OMP_NUM_THREADS=1; export MKL_NUM_THREADS=1; mkdir -p {shlex_quote(str(opts.run_dir))}; {' '.join(shlex_quote(x) for x in base_cmd)} 2>&1 | tee -a {shlex_quote(str(train_log))}"
             _run(['tmux', 'new-session', '-d', '-s', session, 'bash', '-lc', cmd_str], check=True)
             meta['mode'] = 'tmux'
             meta['tmux_session'] = session
@@ -294,7 +297,7 @@ def start_training(opts: StartOpts) -> Dict[str, Any]:
             if opts.extra_args:
                 base_cmd_u += list(opts.extra_args)
 
-            cmd_str = f"cd {shlex_quote(root_u)}; export RL_DRONE_HOOPS_VIDEO_DIR={shlex_quote(videos_u)}; export PYTHONPATH={shlex_quote(root_u)}; mkdir -p {shlex_quote(run_dir_u)}; {' '.join(shlex_quote(x) for x in base_cmd_u)} 2>&1 | tee -a {shlex_quote(train_log_u)}"
+            cmd_str = f"cd {shlex_quote(root_u)}; export RL_DRONE_HOOPS_VIDEO_DIR={shlex_quote(videos_u)}; export PYTHONPATH={shlex_quote(root_u)}; export OMP_NUM_THREADS=1; export MKL_NUM_THREADS=1; mkdir -p {shlex_quote(run_dir_u)}; {' '.join(shlex_quote(x) for x in base_cmd_u)} 2>&1 | tee -a {shlex_quote(train_log_u)}"
             _wsl_exec(f"tmux new-session -d -s {shlex_quote(session)} bash -lc {shlex_quote(cmd_str)}", check=True)
             meta['mode'] = 'wsl_tmux'
             meta['tmux_session'] = session
