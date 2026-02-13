@@ -153,6 +153,10 @@ def extract_ppo_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
         "adam_eps": ppo_cfg.get("adam_eps", 1e-5),
         "update_epochs": ppo_cfg.get("update_epochs", 4),
         "minibatch_envs": ppo_cfg.get("minibatch_envs", 4),
+        "auto_restart": ppo_cfg.get("auto_restart", False),
+        "auto_restart_bad_evals": ppo_cfg.get("auto_restart_bad_evals", 3),
+        "auto_restart_return_drop": ppo_cfg.get("auto_restart_return_drop", 50.0),
+        "auto_restart_min_step": ppo_cfg.get("auto_restart_min_step", 50_000),
         "vec_mode": sys_cfg.get("vec_mode", "auto"),
 
         # Environment params

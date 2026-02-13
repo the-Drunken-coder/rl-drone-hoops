@@ -197,6 +197,7 @@ class MujocoDroneHoopsEnv(gym.Env):
         self.k_progress = 5.0
         self.k_center = 1.5
         self.k_speed = 0.1
+        self.k_back = 0.3
         self.k_smooth = 0.01
         self.k_tilt = 0.03  # penalize roll/pitch magnitude (rad)
         self.k_angrate = 0.0001  # penalize body angular rate magnitude
@@ -211,6 +212,7 @@ class MujocoDroneHoopsEnv(gym.Env):
                 "k_progress",
                 "k_center",
                 "k_speed",
+                "k_back",
                 "k_smooth",
                 "k_tilt",
                 "k_angrate",
@@ -368,6 +370,7 @@ class MujocoDroneHoopsEnv(gym.Env):
             "k_progress": self.k_progress,
             "k_center": self.k_center,
             "k_speed": self.k_speed,
+            "k_back": self.k_back,
             "k_smooth": self.k_smooth,
             "k_tilt": self.k_tilt,
             "k_angrate": self.k_angrate,
@@ -763,6 +766,7 @@ class MujocoDroneHoopsEnv(gym.Env):
         # Shaping relative to next gate (if any).
         # (Optimization 2.2: Use cached gate data instead of repeated lookups)
         shaping = 0.0
+        backward_pen = 0.0
         heading_reward = 0.0
         if self._current_gate_radius > 0.0:
             # (Optimization 1.3: Use squared norm to avoid sqrt where possible)
@@ -785,6 +789,9 @@ class MujocoDroneHoopsEnv(gym.Env):
             to_gate = unit(self._current_gate_center - p)
             v_toward = float(np.dot(v, to_gate))
             shaping += self.k_speed * np.clip(v_toward, 0.0, 20.0)
+            # Penalize moving backward relative to the gate direction.
+            backward_pen = -self.k_back * np.clip(max(0.0, -v_toward), 0.0, 20.0)
+            shaping += backward_pen
 
             # Horizontal heading alignment toward the gate (ignore vertical component).
             to_gate_h = self._current_gate_center - p
@@ -822,6 +829,7 @@ class MujocoDroneHoopsEnv(gym.Env):
                 "reward_gate": float(gate_bonus),
                 "reward_shaping": float(shaping),
                 "reward_heading": float(heading_reward),
+                "reward_backward": float(backward_pen),
                 "reward_smooth": float(smooth_pen),
                 "reward_tilt": float(tilt_pen),
                 "reward_angrate": float(ang_pen),

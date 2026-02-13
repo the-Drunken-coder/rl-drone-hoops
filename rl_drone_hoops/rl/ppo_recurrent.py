@@ -168,6 +168,10 @@ class PPOConfig:
         minibatch_envs: Number of environments per minibatch (preserves RNN sequences)
         eval_every_steps: Evaluation frequency
         eval_episodes: Number of episodes per evaluation
+        auto_restart: Auto-restore best model when evals degrade
+        auto_restart_bad_evals: Number of consecutive bad evals before restore
+        auto_restart_return_drop: Return drop threshold vs best
+        auto_restart_min_step: Minimum step before auto-restore is allowed
         image_size: FPV camera resolution (square)
         image_rot90: Rotate FPV image CCW by 90deg this many times
         camera_fps: FPV camera sampling rate
@@ -207,6 +211,10 @@ class PPOConfig:
 
     eval_every_steps: int = 50_000
     eval_episodes: int = 3
+    auto_restart: bool = False
+    auto_restart_bad_evals: int = 3
+    auto_restart_return_drop: float = 50.0
+    auto_restart_min_step: int = 50_000
 
     # Env params (can be overridden per curriculum stage by caller)
     image_size: int = 96
@@ -324,11 +332,16 @@ def evaluate(
             fr = env.render_rgb(height=video_size, width=video_size)
             if video_overlay:
                 p, rpy = env.pose_rpy()
+                a = np.zeros(4, dtype=np.float32)
+                thr_pct = (float(a[3]) + 1.0) * 50.0
                 lines = [
                     f"run={os.path.basename(os.path.normpath(run_dir))} step={step}",
                     f"t={env._t:.2f}s gate={env._next_gate_idx}/{len(env.gates)} ret={ep_ret:.1f}",
                     f"pos=({p[0]:.2f},{p[1]:.2f},{p[2]:.2f})",
                     f"rpy=({np.rad2deg(rpy[0]):.1f},{np.rad2deg(rpy[1]):.1f},{np.rad2deg(rpy[2]):.1f}) deg",
+                    f"a(norm)=({a[0]:+.2f},{a[1]:+.2f},{a[2]:+.2f},{a[3]:+.2f})",
+                    f"sticks L(yaw={a[2]:+.2f},thr={a[3]:+.2f}) R(pitch={a[1]:+.2f},roll={a[0]:+.2f})",
+                    f"throttle={thr_pct:.0f}%",
                 ]
                 fr = overlay_text_topleft(fr, lines)
             frames.append(fr)
@@ -344,12 +357,15 @@ def evaluate(
                 fr = env.render_rgb(height=video_size, width=video_size)
                 if video_overlay:
                     p, rpy = env.pose_rpy()
+                    thr_pct = (float(a[3]) + 1.0) * 50.0
                     lines = [
                         f"run={os.path.basename(os.path.normpath(run_dir))} step={step}",
                         f"t={float(info.get('t', env._t)):.2f}s gate={int(info.get('next_gate_idx', env._next_gate_idx))}/{len(env.gates)} ret={ep_ret:.1f}",
                         f"pos=({p[0]:.2f},{p[1]:.2f},{p[2]:.2f})",
                         f"rpy=({np.rad2deg(rpy[0]):.1f},{np.rad2deg(rpy[1]):.1f},{np.rad2deg(rpy[2]):.1f}) deg",
-                        f"a=({a[0]:+.2f},{a[1]:+.2f},{a[2]:+.2f},{a[3]:+.2f})",
+                        f"a(norm)=({a[0]:+.2f},{a[1]:+.2f},{a[2]:+.2f},{a[3]:+.2f})",
+                        f"sticks L(yaw={a[2]:+.2f},thr={a[3]:+.2f}) R(pitch={a[1]:+.2f},roll={a[0]:+.2f})",
+                        f"throttle={thr_pct:.0f}%",
                     ]
                     fr = overlay_text_topleft(fr, lines)
                 frames.append(fr)
@@ -440,6 +456,7 @@ def train_ppo_recurrent(
     # Best model tracking (auto-saves to models/ folder)
     best_model_tracker = BestModelTracker(models_dir="models")
     writer.add_text("config", str(cfg))
+    bad_eval_count = 0
 
     # Rollout storage.
     T = cfg.rollout_steps
@@ -511,6 +528,49 @@ def train_ppo_recurrent(
                 applied = upd
         base.update(applied)
         return base
+
+    def _maybe_auto_restart(eval_return: float) -> None:
+        nonlocal bad_eval_count, obs, h
+        if not cfg.auto_restart:
+            return
+        if global_step < cfg.auto_restart_min_step:
+            return
+        best_return = float(best_model_tracker.best_metadata.get("best_return", -float("inf")))
+        if not np.isfinite(best_return):
+            return
+        drop = best_return - eval_return
+        if drop >= cfg.auto_restart_return_drop:
+            bad_eval_count += 1
+            writer.add_scalar("train/auto_restart_bad_evals", float(bad_eval_count), global_step)
+            writer.add_scalar("train/auto_restart_return_drop", float(drop), global_step)
+            if bad_eval_count < cfg.auto_restart_bad_evals:
+                return
+            best_path = best_model_tracker.get_best_model_path()
+            if not best_path:
+                logger.warning("auto-restart requested but no best model is available.")
+                bad_eval_count = 0
+                return
+            try:
+                ckpt = torch.load(best_path, map_location=device)
+                model.load_state_dict(ckpt["model_state"])
+                opt.load_state_dict(ckpt["opt_state"])
+                _move_opt_state_to_device(opt, device)
+            except Exception as e:
+                logger.exception("auto-restart failed to load best model: %s", e)
+                bad_eval_count = 0
+                return
+
+            # Reset envs and RNN state after restoring parameters.
+            obs = venv.reset(seeds=[cfg.seed + i for i in range(cfg.num_envs)])
+            h = model.initial_hidden(N, device)
+            ep_ret[:] = 0.0
+            ep_len[:] = 0
+            ep_gates[:] = 0
+            bad_eval_count = 0
+            writer.add_text("auto_restart", f"restored {best_path} at step {global_step}")
+            print(f"auto-restart: restored best model {best_path} at step={global_step}", flush=True)
+        else:
+            bad_eval_count = 0
 
     try:
         while global_step < cfg.total_steps:
@@ -704,6 +764,11 @@ def train_ppo_recurrent(
                         global_flight,  # Use flight number instead of step
                         curriculum=curriculum_info,
                     )
+
+                eval_return = float(eval_metrics.get("eval/return_mean", -float("inf")))
+                if not np.isfinite(eval_return):
+                    eval_return = -float("inf")
+                _maybe_auto_restart(eval_return)
 
                 next_eval += cfg.eval_every_steps
 

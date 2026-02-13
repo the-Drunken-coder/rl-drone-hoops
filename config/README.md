@@ -77,6 +77,10 @@ This allows you to:
 - `adam_eps`: Adam optimizer epsilon
 - `update_epochs`: Passes over rollout data
 - `minibatch_envs`: Environments per minibatch
+- `auto_restart`: Auto-restore best model when evals degrade
+- `auto_restart_bad_evals`: Number of consecutive bad evals before restore
+- `auto_restart_return_drop`: Return drop threshold vs best before counting as bad
+- `auto_restart_min_step`: Minimum step before auto-restore is allowed
 
 ### `environment` - Sensors & Physics
 - `image_size`: FPV camera resolution (square pixels)
@@ -96,6 +100,7 @@ This allows you to:
 - `k_progress`: Reward for reducing distance to next gate
 - `k_center`: Penalty for lateral distance from gate axis
 - `k_speed`: Reward for velocity toward the gate
+- `k_back`: Penalty for velocity away from the gate direction
 - `k_heading`: Reward for yaw alignment toward the gate (horizontal only)
 - `k_away`: Penalty for increasing distance to the gate
 - `k_smooth`: Penalty for action changes

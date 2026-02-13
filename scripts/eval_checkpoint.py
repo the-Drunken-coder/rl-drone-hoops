@@ -84,11 +84,16 @@ def main() -> int:
             if use_overlay:
                 p, rpy = env.pose_rpy()
                 step = int(ckpt.get("global_step", -1))
+                a = np.zeros(4, dtype=np.float32)
+                thr_pct = (float(a[3]) + 1.0) * 50.0
                 lines = [
                     f"ckpt={os.path.basename(args.checkpoint)} step={step}",
                     f"t={env._t:.2f}s gate={env._next_gate_idx}/{len(env.gates)} ret={ep_ret:.1f}",
                     f"pos=({p[0]:.2f},{p[1]:.2f},{p[2]:.2f})",
                     f"rpy=({np.rad2deg(rpy[0]):.1f},{np.rad2deg(rpy[1]):.1f},{np.rad2deg(rpy[2]):.1f}) deg",
+                    f"a(norm)=({a[0]:+.2f},{a[1]:+.2f},{a[2]:+.2f},{a[3]:+.2f})",
+                    f"sticks L(yaw={a[2]:+.2f},thr={a[3]:+.2f}) R(pitch={a[1]:+.2f},roll={a[0]:+.2f})",
+                    f"throttle={thr_pct:.0f}%",
                 ]
                 fr = overlay_text_topleft(fr, lines)
             frames.append(fr)
@@ -106,12 +111,15 @@ def main() -> int:
                 if use_overlay:
                     p, rpy = env.pose_rpy()
                     step = int(ckpt.get("global_step", -1))
+                    thr_pct = (float(a[3]) + 1.0) * 50.0
                     lines = [
                         f"ckpt={os.path.basename(args.checkpoint)} step={step}",
                         f"t={float(info.get('t', env._t)):.2f}s gate={int(info.get('next_gate_idx', env._next_gate_idx))}/{len(env.gates)} ret={ep_ret:.1f}",
                         f"pos=({p[0]:.2f},{p[1]:.2f},{p[2]:.2f})",
                         f"rpy=({np.rad2deg(rpy[0]):.1f},{np.rad2deg(rpy[1]):.1f},{np.rad2deg(rpy[2]):.1f}) deg",
-                        f"a=({a[0]:+.2f},{a[1]:+.2f},{a[2]:+.2f},{a[3]:+.2f})",
+                        f"a(norm)=({a[0]:+.2f},{a[1]:+.2f},{a[2]:+.2f},{a[3]:+.2f})",
+                        f"sticks L(yaw={a[2]:+.2f},thr={a[3]:+.2f}) R(pitch={a[1]:+.2f},roll={a[0]:+.2f})",
+                        f"throttle={thr_pct:.0f}%",
                     ]
                     fr = overlay_text_topleft(fr, lines)
                 frames.append(fr)
