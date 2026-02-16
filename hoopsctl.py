@@ -142,7 +142,8 @@ def _default_run_name() -> str:
 
 
 def _python_default() -> str:
-    return 'python3' if _is_posix() else 'python'
+    # Use the interpreter running hoopsctl (keeps venvs consistent).
+    return sys.executable or ('python3' if _is_posix() else 'python')
 
 
 def _ensure_ansi_on_windows() -> None:
@@ -656,7 +657,7 @@ def _parse_args(argv: Sequence[str]) -> argparse.Namespace:
     sp = sub.add_parser('start', help='Start a new training run (tmux on Linux; WSL+tmux if available on Windows).')
     sp.add_argument('--name', type=str, default='', help='Run name (defaults to ppo_rnn_YYYYMMDD_HHMMSS).')
     sp.add_argument('--run-dir', type=str, default='', help='Explicit run dir (defaults to ./runs/<name>).')
-    sp.add_argument('--python', type=str, default='', help='Python interpreter (default: python3 on POSIX, python on Windows).')
+    sp.add_argument('--python', type=str, default='', help='Python interpreter (default: current interpreter; usually venv if active).')
     sp.add_argument('--total-steps', type=int, default=200_000)
     sp.add_argument('--num-envs', type=int, default=4)
     sp.add_argument('--resume', action='store_true', help='Resume latest checkpoint in the run dir.')
